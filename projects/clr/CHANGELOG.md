@@ -21,6 +21,7 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
       * `hipArrayGetSparseProperties` returns the layout properties of a sparse HIP array in a
         `hipArraySparseProperties` structure. Added for source compatibility: AMD devices do not
         support sparse arrays, so it zeroes the structure and returns `hipErrorNotSupported`.
+* Support for child graph node ownership in `hipGraphAddNode`. The new `hipGraphChildGraphNodeOwnership` enumeration and the `ownership` member of `hipChildGraphNodeParams` select whether a child graph is cloned into the parent (`hipGraphChildGraphOwnershipClone`, the default) or moved into it (`hipGraphChildGraphOwnershipMove`), providing parity with corresponding CUDA behavior. A moved child graph is owned by its parent and destroyed with it. It can no longer be independently destroyed or instantiated, added to a second parent graph, or passed to `hipGraphExecUpdate`.
 
 ### Resolved issues
 
