@@ -16,8 +16,8 @@ id comes from its file name (0300_memory_chart.yaml is panel 300), a table's id 
 position in the panel (301 is the first table), and a row's numeric id (3.1.0) from its
 position in the table.
 
-Until the cutover, analyze reads only the built-in top stats view (--list-stats) and
-tools read the rest; tools/validate_views.py checks the files.
+arch_panel_configs() returns the panel configs analyze shows; tools/validate_views.py
+checks the view files.
 Standard library and the vendored YAML only: profile mode imports it.
 """
 
@@ -40,6 +40,7 @@ from utils.equation_format import (
 from utils.utils_common import (
     canonical_config_arch,
     format_table_id,
+    load_panel_configs,
     load_yaml,
     mapping_field_errors,
 )
@@ -196,6 +197,12 @@ def per_dispatch_partners(collectables: Dict[str, str]) -> Dict[str, Optional[st
         name: per_dispatch_partner(name, collectables)
         for name in summed_collectables(collectables)
     }
+
+
+def arch_panel_configs(arch: str) -> "OrderedDict[int, Dict[str, Any]]":
+    """Return the panel configs analyze shows for an arch."""
+    config_arch = canonical_config_arch(arch) or arch
+    return load_panel_configs([str(config.analysis_configs_dir / config_arch)])
 
 
 def panel_aliases(views: Dict[int, Dict[str, Any]]) -> Dict[str, str]:
