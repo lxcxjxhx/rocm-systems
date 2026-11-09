@@ -862,11 +862,12 @@ static void ncclGroupSymmetricJobFree(void* _job) {
 static ncclResult_t ncclPrepareTasksAndCollPreconnect(
   struct ncclComm* comm, ncclSimInfo_t* simInfo,
   struct ncclIntruQueue<struct ncclAsyncJob, &ncclAsyncJob::next>* asyncCollJobs) {
-  // Symmetric task selection performs a bootstrap consensus in ncclPrepareTasks.
-  // When this process owns multiple ranks, prepare them concurrently so the
-  // first rank cannot block before its sibling ranks enter the same consensus.
+  CUDACHECK(cudaSetDevice(comm->cudaDev));
+  // initTransportsRank eagerly initializes symk. Keep concurrent preparation as
+  // a conservative fallback if a capable comm ever reaches this point uninitialized:
+  // the first local rank must not block in symk bootstrap consensus before its siblings enter.
   bool const needsConcurrentSymmetricPrepare =
-    comm->intraRanks > 1 && comm->symmetricSupport && !comm->p2pCrossClique;
+    comm->intraRanks > 1 && comm->symmetricSupport && !comm->p2pCrossClique && !comm->symkState.initialized;
   if (needsConcurrentSymmetricPrepare) {
     struct ncclPrepareTasksAndCollPreconnectJob* job;
     NEW_NOTHROW(job, ncclPrepareTasksAndCollPreconnectJob);
