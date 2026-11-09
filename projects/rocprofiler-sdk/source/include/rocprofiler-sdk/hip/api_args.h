@@ -3742,6 +3742,14 @@ typedef union rocprofiler_hip_api_args_t
         hipGraphExec_t graphExec;
         unsigned int*  graphId;
     } hipGraphExecGetId;
+
+    struct
+    {
+        hipStream_t                    stream;
+        hipStreamCaptureMode           mode;
+        hipGraph_t                     graph;
+        hipGraphRecaptureCallbackData* callbackData;
+    } hipStreamBeginRecaptureToGraph;
 #endif
 } rocprofiler_hip_api_args_t;
 
