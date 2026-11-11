@@ -12,6 +12,9 @@ Until the cutover, each view is one analysis config panel:
 - each panel's -b alias is the config template's;
 - every row is a row of the same panel table.
 
+A replaced panel (REPLACED_PANEL_IDS: the new Speed of Light) keeps only the panel's
+title and -b alias; its rows are a new design.
+
 Values, units, peaks and descriptions come from the metric library and are not compared.
 The check skips the panels the metric library sync test skips (the roofline panel of an
 arch without a roofline benchmark). The views leave out the panels in LEFT_OUT_PANELS.
@@ -29,6 +32,7 @@ from rocprof_compute_soc.metric_library import loader
 from utils.analysis_views import (
     METRIC_TABLE,
     NO_VALUE,
+    REPLACED_PANEL_IDS,
     load_views,
     panel_aliases,
     row_label,
@@ -62,6 +66,10 @@ def structure_errors(
         return [f"panels: analysis configs have {list(expected)}, views {list(actual)}"]
     errors = []
     for panel_id, panel in expected.items():
+        if panel_id in REPLACED_PANEL_IDS:
+            if panel["title"] != actual[panel_id]["title"]:
+                errors.append(f"panel {panel_id}: title {actual[panel_id]['title']!r}")
+            continue
         errors.extend(
             f"panel {panel_id}: {error}"
             for error in _panel_errors(panel, actual[panel_id])
@@ -160,9 +168,12 @@ def _row_errors(
     panel_rows: Set[Tuple[int, str, str]],
 ) -> List[str]:
     """Check that each row is a row of a panel table with the same title (panel_rows:
-    _panel_rows()). This also covers the panels the structure check skips."""
+    _panel_rows()). This also covers the panels the structure check skips, except a
+    replaced panel, whose rows are new."""
     errors = []
     for panel_id, view in views.items():
+        if panel_id in REPLACED_PANEL_IDS:
+            continue
         for table in view["tables"]:
             names = [row_label(row, metrics) for row in table.get("metrics", [])]
             errors.extend(

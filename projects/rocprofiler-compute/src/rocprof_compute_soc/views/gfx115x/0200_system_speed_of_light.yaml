@@ -1,7 +1,23 @@
 view: System Speed-of-Light
 alias: sol
 tables:
-- title: System Speed-of-Light
+- title: GPU Speed-of-Light
+  header:
+    metric: Metric
+    value: Avg
+    unit: Unit
+    peak: Peak
+    pct_of_peak: Percent of Peak
+  metrics:
+  - metric: lds.theoretical_bw
+    pct_of_peak: false
+  - metric: gl0.bw
+    label: GL0 Cache BW (TCP Cache)
+  - metric: l2.bw
+    label: GL2 Cache BW
+  - metric: gl2.fabric_rd_bw
+  - metric: gl2.fabric_wr_bw
+- title: Compute Throughput
   header:
     metric: Metric
     value: Avg
@@ -10,41 +26,42 @@ tables:
     pct_of_peak: Percent of Peak
   metrics:
   - metric: compute.valu_flops
-  - metric: compute.valu_flops_f64
   - metric: compute.ipc
-  - metric: wave.occupancy
-  - metric: gl2.hit_rate
-    pct_of_peak: false
-  - metric: gl2.fabric_rd_bw
-    label: GL2-Fabric Read BW
-  - metric: gl2.fabric_wr_bw
-    label: GL2-Fabric Write BW
-  - metric: lds.bank_conflicts
-    pct_of_peak: false
-  - metric: wave.wait_for_any
-    label: Wave Dependency Wait
-    pct_of_peak: false
-  - metric: wave.issue_wait
-    pct_of_peak: false
-  - metric: gl0.hit_rate
-    label: GL0 Cache Hit Rate (TCP Cache)
-    pct_of_peak: false
+- title: Memory Throughput
+  header:
+    metric: Metric
+    value: Avg
+    unit: Unit
+    peak: Peak
+    pct_of_peak: Percent of Peak
+  metrics:
   - metric: gl0.bw
     label: GL0 Cache BW (TCP Cache)
-  - metric: gl1.hit_rate
-    label: GL1 Cache Hit Rate
+  - metric: gl0.busy
     pct_of_peak: false
-  - metric: gl1.gl2_rd_bw
-    label: GL1 Cache Read BW
+  - metric: lds.theoretical_bw
+    pct_of_peak: false
+  - metric: lds.util
+    pct_of_peak: false
+  - metric: lds.bank_conflicts
+    pct_of_peak: false
+  - metric: gl2.hit_rate
+    pct_of_peak: false
   - metric: l2.bw
     label: GL2 Cache BW
+  - metric: gl2.util
+    pct_of_peak: false
+  - metric: gl2.fabric_rd_bw
+  - metric: gl2.fabric_wr_bw
   - metric: sl1d.hit_rate_excl_dup
     label: Scalar Data Cache Hit Rate
     pct_of_peak: false
-  - metric: sl1d.gl1_rd_bw
-    label: Scalar Data Cache BW
   - metric: l1i.hit_rate_excl_dup
     label: Instruction Cache Hit Rate
     pct_of_peak: false
+  - metric: grbm.ta_busy
+    pct_of_peak: false
   - metric: l1i.gl1_rd_bw
     label: Instruction Cache BW
+  - metric: sl1d.gl1_rd_bw
+    label: Scalar Data Cache BW
