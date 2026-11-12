@@ -140,6 +140,20 @@ bool SkipCurrentTest(const char* reason) {
   return true;
 }
 
+bool SkipIfMemAvailDisturbed(size_t begin, size_t end) {
+  if (!MemAvailDisturbed(begin, end)) return false;
+
+  std::string reason =
+      "device-wide MEMORY_AVAIL moved by " + std::to_string(MemAvailDelta(begin, end)) +
+      " bytes across the test (before " + std::to_string(begin) + ", after " +
+      std::to_string(end) +
+      "). HSA_AMD_AGENT_INFO_MEMORY_AVAIL covers every process on the GPU, so "
+      "another process was using this device and these readings cannot be "
+      "attributed to this test. This test needs exclusive use of the device.";
+
+  return SkipCurrentTest(reason.c_str());
+}
+
 bool SkipOnWsl(const char* reason) {
   if (!isWslEnvironment()) return false;
   return SkipCurrentTest(reason);

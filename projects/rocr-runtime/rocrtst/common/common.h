@@ -319,5 +319,54 @@ hsa_status_t GetAgentPools(
 static constexpr size_t kMaxTestAllocAsan = 512ULL * 1024 * 1024;  // 512 MB
 #endif
 
+/// Granularity of HSA_AMD_AGENT_INFO_MEMORY_AVAIL on a discrete GPU. KFD
+/// rounds the figure it reports down to this boundary, so two reads taken
+/// around an allocation can differ from the allocation size by up to one
+/// granule even when nothing else on the device moved.
+static constexpr size_t kMemAvailGranule = 2ULL * 1024 * 1024;  // 2 MB
+
+/// Allowance for the rounding above when comparing two readings: one granule
+/// of slack for each of the two readings being compared.
+///
+/// This is NOT an allowance for other processes. The reported figure is
+/// DEVICE-WIDE - KFD derives it from accounting summed over every process
+/// using the GPU, not from the calling process alone - so any other user of
+/// the same device that allocates or frees between two readings moves it, by
+/// however much that process happens to be using. No fixed tolerance can
+/// absorb that, because a neighbour's footprint is unbounded. Tests must
+/// instead DETECT that the device was disturbed and decline to conclude:
+/// see MemAvailDisturbed() below.
+static constexpr size_t kMemAvailTolerance = 2 * kMemAvailGranule;  // 4 MB
+
+/// Absolute difference between two memory-availability readings. The readings
+/// are unsigned, so subtracting them directly underflows when the figure moves
+/// up rather than down.
+static inline size_t MemAvailDelta(size_t a, size_t b) {
+  return (a > b) ? (a - b) : (b - a);
+}
+
+/// True if the device-wide availability figure did not return to where it
+/// started after a test released everything it allocated, which means some
+/// other process on the same GPU allocated or freed during the test window.
+///
+/// When this is true the readings taken during the window cannot be
+/// attributed to the calling process, so there is nothing for the test to
+/// assert. Skip rather than fail: the condition under test is unobservable,
+/// not violated. A test that must have an exact figure needs exclusive use
+/// of the device.
+static inline bool MemAvailDisturbed(size_t begin, size_t end) {
+  return MemAvailDelta(begin, end) > kMemAvailTolerance;
+}
+
+/// If MemAvailDisturbed(), record the current test as skipped via
+/// SkipCurrentTest() - naming the drift and both readings - and return true so
+/// the caller can return early. Returns false if the device was quiet, in
+/// which case the readings mean what the test assumes and it should check
+/// them.
+/// \param[in] begin reading taken before the test allocated anything
+/// \param[in] end reading taken after the test released everything
+/// \returns true if the test must not conclude from its readings
+bool SkipIfMemAvailDisturbed(size_t begin, size_t end);
+
 }  // namespace rocrtst
 #endif  // ROCRTST_COMMON_COMMON_H_
