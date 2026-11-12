@@ -28,6 +28,8 @@ from amdisa import (
 from amdisa import xml_schema as xs
 from amdisa.cross_isa import CrossIsaAnalyzer
 from amdisa.codegen.dbt.rule_gen import generate_matrix_conversions
+from amdisa.codegen.instruction_metadata import emit_operations
+from amdisa.codegen.async_mma_policy import emit_async_inline_operations
 from amdisa.encoding_translator_codegen import (
     generate_encoding_fields,
     generate_encoding_translators,
@@ -294,6 +296,8 @@ def _run(args) -> None:
     # Generate per-ISA files, accumulating shared execute bodies.
     if args.gen_isas:
         emit_isa_properties(args.isa_output, specs)
+        operations = emit_operations(args.isa_output, specs)
+        emit_async_inline_operations(args.isa_output, operations, config=config)
         body_variants = _collect_shared_execute_body_variants(specs, plan)
         unshared_keys = _unshared_execute_keys_from_variants(body_variants)
         config.unshared_execute_keys = unshared_keys
@@ -358,7 +362,11 @@ def _run(args) -> None:
             )
         print(f'Generated {len(generated)} files in {dbt_output}', file=sys.stderr)
 
-        matrix_header = generate_matrix_conversions(dbt_output)
+        # DBT-only generation uses the installed catalog; a combined run must
+        # include the catalog emitted into its configured ISA output tree.
+        matrix_header = generate_matrix_conversions(
+            dbt_output, config=config if args.gen_isas else None
+        )
         print(f'Generated {matrix_header}', file=sys.stderr)
 
         generate_encoding_fields(specs, dbt_output)

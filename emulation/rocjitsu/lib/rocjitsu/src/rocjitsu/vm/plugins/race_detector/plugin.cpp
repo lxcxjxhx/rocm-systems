@@ -991,8 +991,8 @@ void RaceDetectorPlugin::onAmdgpuBeforeExecuteInstruction(uint64_t pc, const Ins
     // applied after routing: before its operands are read, neither memory
     // domain is guaranteed to be used. On gfx1250 every FLAT counts on both
     // domains, so it is admitted here like any other memory instruction.
-    if (inst.is_memory_op() &&
-        (!inst.mnemonic().starts_with("flat_") || flat_counts_on_both_domains(wf.cu().arch()))) {
+    if (inst.is_memory_op() && (inst.amdgpu_memory_addressing() != amdgpu::MemoryAddressing::Flat ||
+                                flat_counts_on_both_domains(wf.cu().arch()))) {
       const auto *info = inst.amdgpu_memory_issue_info();
       assert(info && "memory instruction reached the race detector without issue metadata");
       util::Result admitted = util::Result::success();
@@ -1030,12 +1030,18 @@ void RaceDetectorPlugin::onAmdgpuBeforeExecuteInstruction(uint64_t pc, const Ins
     // issue metadata. They count on LGKMCNT before GFX12 and on KMcnt on
     // gfx1250 (CDNA5 ISA 5.7.1.5), where S_SENDMSG_RTN_B* adds two tokens, one
     // for the message and one for its returned data (CDNA5 ISA 5.4).
-    const std::string_view mnemonic = inst.mnemonic();
-    if (mnemonic.starts_with("s_sendmsg")) {
+    const amdgpu::Operation operation = inst.amdgpu_operation();
+    if (operation == amdgpu::Operation::S_SENDMSG ||
+        operation == amdgpu::Operation::S_SENDMSGHALT ||
+        operation == amdgpu::Operation::S_SENDMSG_RTN_B32 ||
+        operation == amdgpu::Operation::S_SENDMSG_RTN_B64) {
       const bool cdna5 = wf.cu().arch() == ROCJITSU_CODE_ARCH_CDNA5;
       const auto counter =
           cdna5 ? amdgpu::WaitCounterType::KMCNT : amdgpu::WaitCounterType::LGKMCNT;
-      const uint8_t increment = cdna5 && mnemonic.starts_with("s_sendmsg_rtn") ? 2 : 1;
+      const uint8_t increment = cdna5 && (operation == amdgpu::Operation::S_SENDMSG_RTN_B32 ||
+                                          operation == amdgpu::Operation::S_SENDMSG_RTN_B64)
+                                    ? 2
+                                    : 1;
       if (s->race_state->prepareForCounterIncrement(counter, increment).failed()) {
         report_plugin_failure(wf, "race detector counter capacity or increment is invalid");
         return;
