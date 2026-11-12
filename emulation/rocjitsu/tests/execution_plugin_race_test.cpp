@@ -60,6 +60,23 @@ using namespace rocjitsu::plugins::race_detector;
 using namespace rocjitsu::test::execution_plugin;
 using mma_test::make_cdna4_mfma_scale_words;
 
+/// Report one round of a single-instruction workgroup barrier as the simulator
+/// does: each member signals, the round completes, and each member passes its
+/// wait. Each round closes before the next opens, so rounds can share a
+/// generation.
+void report_workgroup_barrier(ExecutionPluginGroup &group, std::span<Wavefront *> members) {
+  const BarrierRound round{.kind = BarrierKind::Workgroup,
+                           .completion_bit = kWorkgroupBarrierBit,
+                           .named_id = 0,
+                           .generation = 0};
+  for (auto *wave : members)
+    group.onAmdgpuBarrierSignaled(*wave, round);
+  group.onAmdgpuBarrierResolved(members, round.kind);
+  group.onAmdgpuBarrierRoundCompleted(members, round);
+  for (auto *wave : members)
+    group.onAmdgpuBarrierWaitPassed(*wave, round);
+}
+
 void record_register_probe(ExecutionPluginGroup &plugins, Wavefront &wave) {
   auto decoder = Decoder::create(wave.cu().arch());
   const uint32_t word = S_NOP;
@@ -3552,7 +3569,7 @@ TEST(RaceDetectorPluginTest, DualOffsetIntervalsPreserveUnionAndInstructionLifet
         PendingWaitCount wait;
         wait.add(WaitCounterType::LGKMCNT, remaining);
         race.dispatch(wait);
-        race.flushBarrierPendingEvents();
+        race.retireReleasedThrough(std::numeric_limits<uint32_t>::max());
         EXPECT_EQ(events.status(EventId{0}), EventStatus::RETIRED);
         EXPECT_EQ(events.status(EventId{1}),
                   remaining ? EventStatus::ACTIVE : EventStatus::RETIRED);
@@ -5383,7 +5400,7 @@ TEST(RaceDetectorPluginTest, Gfx10LdsDirectSourceChecksTheBroadcastBytesWithoutI
           ASSERT_NO_FATAL_FAILURE(issue(wave, std::array{legacy_wait_word(arch, 63, 0)}, 1));
         }
         if (sync == Sync::Barrier || sync == Sync::LgkmBarrier)
-          f.plugin_group_->onAmdgpuBarrierResolved(waves, BarrierKind::Workgroup);
+          report_workgroup_barrier(*f.plugin_group_, waves);
       };
       if (!read_first) {
         ASSERT_NO_FATAL_FAILURE(write());
@@ -6077,7 +6094,7 @@ TEST(RaceDetectorPluginOutputTest, KeepsProducerBytesAfterWaitAndTraceOverwrite)
   EXPECT_NE(sink.str().find("(before trace window)  ; <-- wave 0\n"
                             "       ... 0 instructions not recorded ...\n"),
             std::string::npos);
-  state->race_state->flushBarrierPendingEvents();
+  state->race_state->retireReleasedThrough(std::numeric_limits<uint32_t>::max());
   EXPECT_TRUE(state->race_state->getDetector()->events().isTrimmable(event));
 }
 
@@ -6886,7 +6903,7 @@ TEST(RaceDetectorPluginTest, Cdna1LdsDirectSourceChecksPendingWritesWithoutCreat
       ASSERT_NO_FATAL_FAILURE(write());
       if (order == WriterWaitBarrierReader) {
         wait(*writer);
-        fixture.plugin_group_->onAmdgpuBarrierResolved(waves, BarrierKind::Workgroup);
+        report_workgroup_barrier(*fixture.plugin_group_, waves);
       }
       ASSERT_NO_FATAL_FAILURE(read());
     } else {
@@ -6894,7 +6911,7 @@ TEST(RaceDetectorPluginTest, Cdna1LdsDirectSourceChecksPendingWritesWithoutCreat
       if (order == ReaderWaitWriter)
         wait(*reader);
       if (order == ReaderBarrierWriter)
-        fixture.plugin_group_->onAmdgpuBarrierResolved(waves, BarrierKind::Workgroup);
+        report_workgroup_barrier(*fixture.plugin_group_, waves);
       ASSERT_NO_FATAL_FAILURE(write());
     }
     const bool barrier = order == ReaderBarrierWriter || order == WriterWaitBarrierReader;
