@@ -68,13 +68,13 @@ def wrap_kernel_name(name: str) -> str:
 def scale_bw_columns(
     df: pd.DataFrame, value_columns: list[str], decimal: int = 2
 ) -> pd.DataFrame:
-    """Scale Bytes/s rows to human-readable units; recalculate Percent of Peak."""
+    """Scale GB/s rows to human-readable units; recalculate Percent of Peak."""
     if "Unit" not in df.columns:
         return df
 
     df_copy = df.copy()
 
-    bw_rows = df_copy["Unit"].str.lower().str.contains("bytes/s", na=False)
+    bw_rows = df_copy["Unit"].str.lower().eq("gb/s")
     if not bw_rows.any():
         return df_copy
 
@@ -791,8 +791,8 @@ def format_table_output(
     # fash for now.
     transpose = table_type != "raw_csv_table" and table_config.get("columnwise", False)
 
-    # For a single run, format Bytes/s metrics with human-readable units.
-    # For multiple runs (baseline comparison), keep Bytes for accurate comparison
+    # For a single run, format GB/s metrics with human-readable units.
+    # For multiple runs (baseline comparison), keep GB/s for accurate comparison
     is_single_run = len(runs) == 1
 
     if is_single_run and "Unit" in df.columns:

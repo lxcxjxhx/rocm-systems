@@ -4,6 +4,7 @@
 """Unit tests for src/utils/tty.py."""
 
 import argparse
+import re
 import sys
 from io import StringIO
 from types import SimpleNamespace
@@ -191,23 +192,23 @@ def test_format_table_output_keeps_pc_sampling_table_21_1() -> None:
     assert content.index("Stall reason definitions:") < content.index("vecCopy")
 
 
-def test_format_table_output_scales_bytes_per_second() -> None:
+def test_format_table_output_scales_gb_per_second() -> None:
     df = pd.DataFrame({
-        "Metric": ["DRAM Read Bandwidth"],
-        "Value": [1e9],
-        "Unit": ["Bytes/s"],
+        "Metric": ["HBM Bandwidth", "L2-Fabric Read BW"],
+        "Value": [1500.0, 0.0123],
+        "Unit": ["GB/s", "GB/s"],
     })
 
     content = format_table_output(
         make_args(),
-        {"id": 300, "title": "Memory Chart"},
+        {"id": 1700, "title": "L2 Cache"},
         df,
         "metric_table",
         runs={"only": object()},
     )
 
-    assert "GB/s" in content
-    assert "1000000000" not in content
+    assert re.search(r"HBM Bandwidth\W+1\.50\W+TB/s", content)
+    assert re.search(r"L2-Fabric Read BW\W+12\.30\W+MB/s", content)
 
 
 def test_has_time_data_detection() -> None:
@@ -491,14 +492,14 @@ def test_show_all_draws_the_memory_chart_from_raw_values_and_config_units(
     metric_dataframe = pd.DataFrame({
         "Metric_ID": ["3.1.0"],
         "Metric": ["DRAM Read Bandwidth"],
-        "Value": [512e9],
-        "Unit": ["Bytes/s"],
+        "Value": [512.0],
+        "Unit": ["GB/s"],
     }).set_index("Metric_ID")
     table_config = {
         "id": 301,
         "title": "Instruction Cache",
         "header": {"metric": "Metric", "value": "Value", "unit": "Unit"},
-        "metric": {"DRAM Read Bandwidth": {"value": "X", "unit": "Bytes/s"}},
+        "metric": {"DRAM Read Bandwidth": {"value": "X", "unit": "GB/s"}},
     }
     arch_configs = SimpleNamespace(
         panel_configs={
@@ -539,13 +540,13 @@ def test_show_all_draws_the_memory_chart_from_raw_values_and_config_units(
         profiling_config={"filter_blocks": []},
     )
 
-    # Values are unscaled Bytes/s; units are the config's, not the display's
+    # Values are unscaled GB/s; units are the config's, not the display's
     assert calls == [
         (
-            {"3.1.0": 512e9},
+            {"3.1.0": 512.0},
             "3. Memory Chart (Normalization: per_wave)",
             "gfx1250",
-            {"3.1.0": "Bytes/s"},
+            {"3.1.0": "GB/s"},
         )
     ]
     assert "rendered gfx1250 memory chart" in rendered_output.getvalue()
