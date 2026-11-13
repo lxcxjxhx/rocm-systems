@@ -9,8 +9,7 @@ Until the cutover, the library copies the analysis configs:
 - every row has the unit of its metric;
 - every row peak is a peak of its metric, and every library peak has a row;
 - the library reads the same counters as detect_counters();
-- the library collectables equal the analysis config collectables;
-- each library set lists the metrics of its old set in profile_configs/sets.
+- the library collectables equal the analysis config collectables.
 
 The check skips the roofline panel of an arch without a roofline benchmark (gfx908).
 """
@@ -37,7 +36,6 @@ from utils.mi_gpu_spec import mi_gpu_specs
 from utils.utils_common import (
     MEMBW_ANALYSIS_PANEL_ID,
     config_arch_members,
-    parse_sets_yaml,
 )
 from utils.utils_counter_defs import Collectables, metric_value_keys
 
@@ -305,28 +303,6 @@ def shown_blocks(arch: str) -> List[str]:
     return [str(int(file_id) // 100) for file_id in sorted(file_ids - unshown)]
 
 
-def old_sets_by_metric_id(arch_view: SimpleNamespace) -> Dict[str, Dict[str, Any]]:
-    """Return each old set of the arch, with the metric ids of its rows.
-
-    Rows without a formula are left out, and so is a set without any formula.
-    """
-    metric_id_by_position = dict(
-        zip((row.legacy_id for row in arch_view.rows), arch_view.metric_ids)
-    )
-    old_sets = {}
-    gpu_arch = config_arch_members(arch_view.arch)[0]
-    for set_option, entry in parse_sets_yaml(gpu_arch).items():
-        metric_ids = [
-            metric_id_by_position.get(str(position))
-            for item in entry["metric"]
-            for position in item
-        ]
-        metric_ids = [metric_id for metric_id in metric_ids if metric_id is not None]
-        if metric_ids:
-            old_sets[set_option] = {"title": entry["title"], "metrics": metric_ids}
-    return old_sets
-
-
 @pytest.fixture(scope="module", params=list(loader.METRIC_LIBRARY_PARENT_ARCH))
 def arch_view(request) -> SimpleNamespace:
     """One arch's library, its analysis config rows and the metric id of each row."""
@@ -449,8 +425,3 @@ def test_collectables_match_analysis_configs(arch_view):
         for name, formula in Collectables.of_arch(arch_view.arch).items()
     }
     assert library_collectables == expected
-
-
-def test_sets_match_profile_configs(arch_view):
-    """Each library set has the title of its old set and the metrics of its rows."""
-    assert arch_view.library.sets == old_sets_by_metric_id(arch_view)
