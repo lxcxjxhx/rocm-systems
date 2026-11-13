@@ -110,25 +110,6 @@ System Speed-of-Light:
   Instruction Cache Fetch Latency:
     rst: Average latency to fetch instruction from GL1 to Instruction Cache.
     unit: Cycles
-Memory chart - Workgroup Processors (WGPs):
-  Wavefront Occupancy:
-    rst: Resident :ref:`wavefronts <desc-wavefront>` per WGP, averaged over GPU-active cycles, as a percent of the maximum wavefronts per WGP.
-    unit: Percent
-  VGPR:
-    rst: 'The number of architected vector general-purpose registers allocated for the kernel. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
-    unit: Registers
-  SGPR:
-    rst: 'The number of scalar general-purpose registers allocated for the kernel. Note: this may not exactly match the number of SGPRs requested by the compiler due to allocation granularity.'
-    unit: Registers
-  LDS Allocation:
-    rst: 'The number of bytes of LDS memory (or, shared memory) allocated per :ref:`workgroup <desc-workgroup>`. Note: This may also be larger than what was requested at compile time due to both allocation granularity and dynamic per-dispatch LDS allocations.'
-    unit: Bytes per Workgroup
-  Scratch Allocation:
-    rst: 'The amount of scratch memory requested per :ref:`wavefront <desc-wavefront>`, in KB: the scratch bytes requested per :ref:`work-item <desc-work-item>` multiplied by the wavefront size. Scratch memory is used for stack memory on the accelerator, as well as for register spills and restores.'
-    unit: KB per Wavefront
-  Workgroups:
-    rst: The number of :ref:`workgroups <desc-workgroup>` in the launch divided by the number of WGPs.
-    unit: Workgroups per WGP
 Memory chart - Instruction Cache:
   ICache Requests:
     rst: Total Instruction Cache fetch requests.
@@ -177,6 +158,9 @@ Memory chart - Scalar Data Cache:
     rst: Average latency of Scalar Data Cache requests sent to GL1.
     unit: Cycles
 Memory chart - GL0 Cache (Vector L0):
+  GL0 Utilization:
+    rst: Percentage of GPU-active cycles (per WGP) the VMW cache controller is busy.
+    unit: Percent
   GL0 Read Requests:
     rst: Number of GL0 read requests.
     unit: Requests per Normalization Unit
@@ -186,9 +170,6 @@ Memory chart - GL0 Cache (Vector L0):
   GL0 Atomic Requests:
     rst: Number of GL0 atomic requests.
     unit: Requests per Normalization Unit
-  GL0 Utilization:
-    rst: Percentage of GPU-active cycles (per WGP) the VMW cache controller is busy.
-    unit: Percent
   GL0 Hit Rate:
     rst: GL0 cache hit rate.
     unit: Percent
@@ -374,6 +355,25 @@ Memory chart - EA to HBM:
   Outstanding Requests:
     rst: Time-averaged total number of in-flight requests from EA to the SDP memory fabric. Higher outstanding counts hide memory latency by keeping HBM busy. Very high outstanding with EA stalls indicates request queues are backed up and the downstream memory controllers cannot accept requests fast enough.
     unit: Count
+Memory chart - Workgroup Processors (WGPs):
+  Wavefront Occupancy:
+    rst: Resident :ref:`wavefronts <desc-wavefront>` per WGP, averaged over GPU-active cycles, as a percent of the maximum wavefronts per WGP.
+    unit: Percent
+  VGPR:
+    rst: 'The number of architected vector general-purpose registers allocated for the kernel. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
+    unit: Registers
+  SGPR:
+    rst: 'The number of scalar general-purpose registers allocated for the kernel. Note: this may not exactly match the number of SGPRs requested by the compiler due to allocation granularity.'
+    unit: Registers
+  LDS Allocation:
+    rst: 'The number of bytes of LDS memory (or, shared memory) allocated per :ref:`workgroup <desc-workgroup>`. Note: This may also be larger than what was requested at compile time due to both allocation granularity and dynamic per-dispatch LDS allocations.'
+    unit: Bytes per Workgroup
+  Scratch Allocation:
+    rst: 'The amount of scratch memory requested per :ref:`wavefront <desc-wavefront>`, in KB: the scratch bytes requested per :ref:`work-item <desc-work-item>` multiplied by the wavefront size. Scratch memory is used for stack memory on the accelerator, as well as for register spills and restores.'
+    unit: KB per Wavefront
+  Workgroups:
+    rst: The number of :ref:`workgroups <desc-workgroup>` in the launch divided by the number of WGPs.
+    unit: Workgroups per WGP
 Roofline Performance Rates:
   VALU FLOPs (FP16):
     rst: Achieved FP16 VALU throughput.
@@ -1256,12 +1256,12 @@ GL1C Utilization:
   GL1C Utilization:
     rst: Percentage of cycles the GL1 is processing requests.
     unit: Percent
-  GL1C Buffer Full Stall:
-    rst: Percentage of GL1-busy cycles GL1 is stalled due to no available buffer entries.
-    unit: Percent
   GL1C Return Arbitration Latency:
     rst: ''
     unit: Cycles
+  GL1C Buffer Full Stall:
+    rst: Percentage of GL1-busy cycles GL1 is stalled due to no available buffer entries.
+    unit: Percent
 GL1C Request:
   GL1C Requests:
     rst: Total requests processed by GL1.
@@ -1285,6 +1285,34 @@ GL1C Request Bandwidth:
   GL1C Request Bandwidth - Write:
     rst: Total GL1 write bandwidth.
     unit: GB/s
+GL1C Multicast:
+  GL1C Multicast Tracker Depletion Stall:
+    rst: Percentage of GL1 Cache busy cycles the multicast tracker resource is depleted.
+    unit: Percent
+  GL1C Multicast Request - 128B:
+    rst: Number of 128-byte multicast requests processed by GL1 Cache.
+    unit: Requests per Normalization Unit
+  GL1C Multicast Request - 256B:
+    rst: Number of 256-byte multicast requests processed by GL1 Cache.
+    unit: Requests per Normalization Unit
+  GL1C Request Bandwidth - Multicast:
+    rst: Total GL1 Cache multicast bandwidth.
+    unit: GB/s
+  GL1C Multicast Tracker 0 Timeout Rate:
+    rst: Percentage of GL1 Cache busy cycles multicast tracker 0 timed out.
+    unit: Percent
+  GL1C Multicast Tracker 1 Timeout Rate:
+    rst: Percentage of GL1 Cache busy cycles multicast tracker 1 timed out.
+    unit: Percent
+  GL1C Multicast Tracker 2 Timeout Rate:
+    rst: Percentage of GL1 Cache busy cycles multicast tracker 2 timed out.
+    unit: Percent
+  GL1C Multicast Tracker 3 Timeout Rate:
+    rst: Percentage of GL1 Cache busy cycles multicast tracker 3 timed out.
+    unit: Percent
+  GL1C Multicast-to-Unicast Downgrade Rate:
+    rst: Percentage of GL1 Cache busy cycles a multicast request was downgraded to unicast.
+    unit: Percent
 GL1C-GLARB Interface:
   GL1C-GLARB Read Requests:
     rst: Number of GL1 to Graphics Level Arbiter read requests.
@@ -1316,6 +1344,12 @@ GL1C-GLARB Interface:
   GL1C-GLARB Write Requests - 256B:
     rst: Number of 256-byte GL1 to Graphics Level Arbiter write requests.
     unit: Requests per Normalization Unit
+  GL1C-GLARB Read Latency:
+    rst: ''
+    unit: Cycles
+  GL1C-GLARB Write Latency:
+    rst: ''
+    unit: Cycles
   GL1C-GLARB Read Bandwidth:
     rst: Total GL1 to Graphic Level Arbiter read bandwidth.
     unit: GB/s
@@ -1325,50 +1359,16 @@ GL1C-GLARB Interface:
   GL1C-GLARB Write ACKs:
     rst: Number of write acknowledgments received from Graphics Level Arbiter by GL1.
     unit: Count per Normalization Unit
-  GL1C-GLARB Read Latency:
-    rst: ''
-    unit: Cycles
-  GL1C-GLARB Write Latency:
-    rst: ''
-    unit: Cycles
-GL1C Multicast:
-  GL1C Multicast Tracker Depletion Stall:
-    rst: Percentage of GL1 Cache busy cycles the multicast tracker resource is depleted.
-    unit: Percent
-  GL1C Multicast Request - 128B:
-    rst: Number of 128-byte multicast requests processed by GL1 Cache.
-    unit: Requests per Normalization Unit
-  GL1C Multicast Request - 256B:
-    rst: Number of 256-byte multicast requests processed by GL1 Cache.
-    unit: Requests per Normalization Unit
-  GL1C Request Bandwidth - Multicast:
-    rst: Total GL1 Cache multicast bandwidth.
-    unit: GB/s
-  GL1C Multicast Tracker 0 Timeout Rate:
-    rst: Percentage of GL1 Cache busy cycles multicast tracker 0 timed out.
-    unit: Percent
-  GL1C Multicast Tracker 1 Timeout Rate:
-    rst: Percentage of GL1 Cache busy cycles multicast tracker 1 timed out.
-    unit: Percent
-  GL1C Multicast Tracker 2 Timeout Rate:
-    rst: Percentage of GL1 Cache busy cycles multicast tracker 2 timed out.
-    unit: Percent
-  GL1C Multicast Tracker 3 Timeout Rate:
-    rst: Percentage of GL1 Cache busy cycles multicast tracker 3 timed out.
-    unit: Percent
-  GL1C Multicast-to-Unicast Downgrade Rate:
-    rst: Percentage of GL1 Cache busy cycles a multicast request was downgraded to unicast.
-    unit: Percent
 GLARBC Utilization:
   Utilization:
     rst: Percentage of cycles the Graphic Level Arbiter is processing requests.
     unit: Percent
-  GLARBC Buffer Full Stall:
-    rst: Percentage of Graphics Level Arbiter busy cycles when it's stalled due to a full buffer.
-    unit: Percent
   GLARBC Return Arbitration Latency:
     rst: ''
     unit: Cycles
+  GLARBC Buffer Full Stall:
+    rst: Percentage of Graphics Level Arbiter busy cycles when it's stalled due to a full buffer.
+    unit: Percent
 GLARBA Processing:
   GLARBA Request Bus Utilization:
     rst: Percentage of cycles the GL1 to Graphics Level Arbiter request bus is active.
@@ -1412,12 +1412,12 @@ GLARBC-GL2 Interface:
   GLARBC-GL2 Read Latency:
     rst: Average Graphics Level Arbiter to GL2 read latency.
     unit: Cycles
-  GLARBC-GL2 Write ACKs:
-    rst: Number of write acknowledgments received from GL2 by Graphics Level Arbiter.
-    unit: Count per Normalization Unit
   GLARBC-GL2 Write Latency:
     rst: ''
     unit: Cycles
+  GLARBC-GL2 Write ACKs:
+    rst: Number of write acknowledgments received from GL2 by Graphics Level Arbiter.
+    unit: Count per Normalization Unit
 GL2A Processing:
   Utilization:
     rst: Percentage of cycles the GL2 Arbiter is distributing requests across GL2 Cache partitions.
@@ -1512,6 +1512,16 @@ GL2C-EA Stalls:
   GL2-EA Data Stall on VC7:
     rst: Percentage of GL2 Cache busy cycles when it's stalled on GL2 Cache to EA data channel VC7.
     unit: Percent
+GL2C-EA Interface - Latencies:
+  GL2-EA Read Latency:
+    rst: ''
+    unit: Cycles
+  GL2-EA Write Latency:
+    rst: ''
+    unit: Cycles
+  GL2-EA Atomic Latency:
+    rst: ''
+    unit: Cycles
 GL2C-EA Interface - HBM Bandwidth:
   GL2-EA HBM Bandwidth - Read:
     rst: Total GL2 to Efficiency Arbiter read bandwidth.
@@ -1652,6 +1662,9 @@ CHC Utilization:
     rst: Percentage of Central Hub Buffer busy cycles when it's stalled due to being full.
     unit: Percent
 CHA Arbitration:
+  Request Latency:
+    rst: ''
+    unit: Cycles
   CHA-CHC0 Request Stall Rate:
     rst: Percentage of Central Hub Arbiter busy cycles when it's stalled forwarding to Central Hub Buffer partition 0.
     unit: Percent
@@ -1664,9 +1677,6 @@ CHA Arbitration:
   CHA Return Path Utilization:
     rst: Percentage of Central Hub Arbiter busy cycles when its return path is busy.
     unit: Percent
-  Request Latency:
-    rst: ''
-    unit: Cycles
 CHC Requests:
   Total Requests:
     rst: Total Central Hub Buffer requests.
@@ -1875,13 +1885,3 @@ SQC-GL1 Interface:
   Interface Stall Rate:
     rst: Percentage of WGP-busy cycles the SQC-GL1 interface is stalled.
     unit: Percent
-GL2C-EA Interface - Latencies:
-  GL2-EA Read Latency:
-    rst: ''
-    unit: Cycles
-  GL2-EA Write Latency:
-    rst: ''
-    unit: Cycles
-  GL2-EA Atomic Latency:
-    rst: ''
-    unit: Cycles

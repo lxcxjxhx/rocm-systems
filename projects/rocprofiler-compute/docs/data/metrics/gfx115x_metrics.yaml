@@ -56,6 +56,114 @@ System Speed-of-Light:
   Instruction Cache BW:
     rst: Bandwidth of instruction cache requests to the GL1 cache. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
     unit: GB/s
+Memory chart - Instruction Cache:
+  ICache Requests:
+    rst: ''
+    unit: Requests per Normalization Unit
+  ICache Hit Rate:
+    rst: Percentage of instruction fetch requests that hit in the instruction cache. High hit rates are essential for sustained instruction throughput. Low hit rates may indicate large kernel code size or divergent control flow.
+    unit: Percent
+  ICache-GL1 Read Bandwidth:
+    rst: Bandwidth of instruction cache requests to the GL1 cache. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
+    unit: GB/s
+Memory chart - Scalar Data Cache:
+  DCache Requests:
+    rst: ''
+    unit: Requests per Normalization Unit
+  DCache Hit Rate:
+    rst: Percentage of scalar data cache accesses that hit in cache. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
+    unit: Percent
+  DCache-GL1 Read Bandwidth:
+    rst: Bandwidth of scalar data cache requests to the GL1 cache. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
+    unit: GB/s
+Memory chart - TCP Cache:
+  TCP Read Requests:
+    rst: Number of read requests to the GL0 vector cache. High read counts indicate memory-intensive load operations. Compare with hit rate to assess cache effectiveness for read traffic.
+    unit: Requests per Normalization Unit
+  TCP Write Requests:
+    rst: Number of write requests to the GL0 vector cache. Write traffic may include global memory stores and cache writebacks. High write counts indicate write-intensive workloads.
+    unit: Requests per Normalization Unit
+  GL0 Cache Hit Rate (TCP Cache):
+    rst: Percentage of GL0 vector cache (TCP Cache) requests that hit in cache. The TCP cache is the first-level cache for vector memory operations. High hit rates reduce traffic to the GL1 cache and improve memory access latency.
+    unit: Percent
+  GL0 Cache BW:
+    rst: Bandwidth of requests to the GL0 vector cache (TCP Cache). This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
+    unit: GB/s
+Memory chart - LDS (Local Data Share):
+  LDS Req:
+    rst: Number of LDS instructions issued by the shader, including FLAT instructions that resolve to LDS. This counts instructions rather than data movement, so it does not distinguish reads from writes.
+    unit: Count per Normalization Unit
+  LDS Utilization:
+    rst: Percentage of the LDS cycle budget across all CUs spent servicing indexed (non-direct, non-interpolation) accesses, measured over GPU-active cycles. Because two CUs share a workgroup processor's LDS, a saturated LDS reads well below 100% on this architecture.
+    unit: Percent
+  LDS Bank Conflict Rate:
+    rst: Percentage of LDS accesses that experienced bank conflicts. Conflicts occur when multiple work-items in a wavefront access different addresses in the same LDS bank. High conflict rates reduce effective LDS bandwidth. Restructuring data layouts can help.
+    unit: Percent
+  LDS Estimated Bandwidth:
+    rst: Estimated achieved bandwidth for Local Data Share operations. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
+    unit: GB/s
+Memory chart - TCP-GL1 Interface:
+  TCP-GL1 Read Bandwidth:
+    rst: ''
+    unit: GB/s
+  TCP-GL1 Write Bandwidth:
+    rst: ''
+    unit: GB/s
+Memory chart - GL1 Cache:
+  GL1 Cache Utilization:
+    rst: Percentage of cycles the GL1 cache is actively processing requests. GL1 cache is shared across multiple workgroup processors within a shader engine. High utilization indicates active memory traffic through the GL1 cache.
+    unit: Percent
+  GL1 Cache Hit Rate:
+    rst: Percentage of L1 cache (GL1C) requests that hit in cache. GL1C is shared across multiple workgroup processors within a shader engine. Higher hit rates reduce traffic to the L2 cache and improve performance.
+    unit: Percent
+  GL1 Cache Stall GL2 Backpressure:
+    rst: ''
+    unit: Percent
+Memory chart - GL1-GL2 Interface:
+  GL1-GL2 Read Bandwidth:
+    rst: Read bandwidth between L1 (GL1C) and L2 (GL2C) caches. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
+    unit: GB/s
+  GL1-GL2 Write Bandwidth:
+    rst: ''
+    unit: GB/s
+Memory chart - GL2 Cache:
+  GL2 Cache Utilization:
+    rst: ''
+    unit: Percent
+  GL2 Cache Hit Rate:
+    rst: Percentage of GL2 cache requests that are serviced from cache without accessing system memory. Higher hit rates reduce memory bandwidth pressure and improve performance. Low hit rates may indicate poor data locality or working sets that exceed cache capacity.
+    unit: Percent
+  GL2-Fabric Read BW:
+    rst: Read bandwidth between the GL2 cache and the memory fabric/system memory. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
+    unit: GB/s
+  GL2-Fabric Write BW:
+    rst: Write bandwidth between the GL2 cache and the memory fabric/system memory. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
+    unit: GB/s
+Memory chart - GCEA to System Memory:
+  SysArb Utilization:
+    rst: Percentage of cycles the System Arbiter is actively processing memory requests. The arbiter handles traffic between the GPU caches and system memory interface. High utilization indicates significant off-chip memory activity.
+    unit: Percent
+  SysArb Stall Rate:
+    rst: ''
+    unit: Percent
+  DRAM Read Bandwidth:
+    rst: Achieved read bandwidth to system memory. RDNA 3.5 APUs use DDR5/LPDDR5 system memory. High read bandwidth indicates memory-intensive read patterns. This is a key metric for identifying memory-bound workloads.
+    unit: GB/s
+  DRAM Write Bandwidth:
+    rst: Achieved write bandwidth to system memory. High write bandwidth indicates write-intensive workloads. Combined with read bandwidth, this shows total memory traffic between the GPU and system memory.
+    unit: GB/s
+  DRAM Read Requests:
+    rst: DRAM read requests per client group from the GCEA memory path (GCEA_RDRAM_REQ_PER_CLIGRP_sum / $denom).
+    unit: Requests per Normalization Unit
+  DRAM Write Requests:
+    rst: DRAM write requests per client group from the GCEA memory path (GCEA_WDRAM_REQ_PER_CLIGRP_sum / $denom).
+    unit: Requests per Normalization Unit
+  Read Returns:
+    rst: Valid read-return events on the GCEA return path per normalization unit (GCEA_RRET_VLD_sum / $denom).
+    unit: Count per Normalization Unit
+  Write Returns:
+    rst: Valid write-return events on the GCEA return path per normalization unit (GCEA_WRET_VLD_sum / $denom).
+    unit: Count per Normalization Unit
 Memory chart - Workgroup Processors (WGPs):
   Wavefront Occupancy:
     rst: Resident :ref:`wavefronts <desc-wavefront>` per WGP, averaged over GPU-active cycles, as a percent of the maximum wavefronts per WGP.
@@ -75,100 +183,6 @@ Memory chart - Workgroup Processors (WGPs):
   Workgroups:
     rst: The number of :ref:`workgroups <desc-workgroup>` in the launch divided by the number of WGPs.
     unit: Workgroups per WGP
-Memory chart - Instruction Cache:
-  ICache Hit Rate:
-    rst: Percentage of instruction fetch requests that hit in the instruction cache. High hit rates are essential for sustained instruction throughput. Low hit rates may indicate large kernel code size or divergent control flow.
-    unit: Percent
-  ICache Requests:
-    rst: ''
-    unit: Requests per Normalization Unit
-  ICache-GL1 Read Bandwidth:
-    rst: Bandwidth of instruction cache requests to the GL1 cache. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
-    unit: GB/s
-Memory chart - Scalar Data Cache:
-  DCache Hit Rate:
-    rst: Percentage of scalar data cache accesses that hit in cache. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
-    unit: Percent
-  DCache Requests:
-    rst: ''
-    unit: Requests per Normalization Unit
-  DCache-GL1 Read Bandwidth:
-    rst: Bandwidth of scalar data cache requests to the GL1 cache. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
-    unit: GB/s
-Memory chart - TCP Cache:
-  GL0 Cache Hit Rate (TCP Cache):
-    rst: Percentage of GL0 vector cache (TCP Cache) requests that hit in cache. The TCP cache is the first-level cache for vector memory operations. High hit rates reduce traffic to the GL1 cache and improve memory access latency.
-    unit: Percent
-  TCP Read Requests:
-    rst: Number of read requests to the GL0 vector cache. High read counts indicate memory-intensive load operations. Compare with hit rate to assess cache effectiveness for read traffic.
-    unit: Requests per Normalization Unit
-  TCP Write Requests:
-    rst: Number of write requests to the GL0 vector cache. Write traffic may include global memory stores and cache writebacks. High write counts indicate write-intensive workloads.
-    unit: Requests per Normalization Unit
-  GL0 Cache BW:
-    rst: Bandwidth of requests to the GL0 vector cache (TCP Cache). This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
-    unit: GB/s
-Memory chart - LDS (Local Data Share):
-  LDS Req:
-    rst: Number of LDS instructions issued by the shader, including FLAT instructions that resolve to LDS. This counts instructions rather than data movement, so it does not distinguish reads from writes.
-    unit: Count per Normalization Unit
-  LDS Utilization:
-    rst: Percentage of the LDS cycle budget across all CUs spent servicing indexed (non-direct, non-interpolation) accesses, measured over GPU-active cycles. Because two CUs share a workgroup processor's LDS, a saturated LDS reads well below 100% on this architecture.
-    unit: Percent
-  LDS Bank Conflict Rate:
-    rst: Percentage of LDS accesses that experienced bank conflicts. Conflicts occur when multiple work-items in a wavefront access different addresses in the same LDS bank. High conflict rates reduce effective LDS bandwidth. Restructuring data layouts can help.
-    unit: Percent
-  LDS Estimated Bandwidth:
-    rst: Estimated achieved bandwidth for Local Data Share operations. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
-    unit: GB/s
-Memory chart - GL1 Cache:
-  GL1 Cache Utilization:
-    rst: Percentage of cycles the GL1 cache is actively processing requests. GL1 cache is shared across multiple workgroup processors within a shader engine. High utilization indicates active memory traffic through the GL1 cache.
-    unit: Percent
-  GL1 Cache Hit Rate:
-    rst: Percentage of L1 cache (GL1C) requests that hit in cache. GL1C is shared across multiple workgroup processors within a shader engine. Higher hit rates reduce traffic to the L2 cache and improve performance.
-    unit: Percent
-  GL1 Cache Stall GL2 Backpressure:
-    rst: ''
-    unit: Percent
-Memory chart - GL2 Cache:
-  GL2 Cache Hit Rate:
-    rst: Percentage of GL2 cache requests that are serviced from cache without accessing system memory. Higher hit rates reduce memory bandwidth pressure and improve performance. Low hit rates may indicate poor data locality or working sets that exceed cache capacity.
-    unit: Percent
-  GL2 Cache Utilization:
-    rst: ''
-    unit: Percent
-  GL2-Fabric Read BW:
-    rst: Read bandwidth between the GL2 cache and the memory fabric/system memory. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
-    unit: GB/s
-  GL2-Fabric Write BW:
-    rst: Write bandwidth between the GL2 cache and the memory fabric/system memory. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
-    unit: GB/s
-Memory chart - GCEA to System Memory:
-  SysArb Utilization:
-    rst: Percentage of cycles the System Arbiter is actively processing memory requests. The arbiter handles traffic between the GPU caches and system memory interface. High utilization indicates significant off-chip memory activity.
-    unit: Percent
-  DRAM Read Bandwidth:
-    rst: Achieved read bandwidth to system memory. RDNA 3.5 APUs use DDR5/LPDDR5 system memory. High read bandwidth indicates memory-intensive read patterns. This is a key metric for identifying memory-bound workloads.
-    unit: GB/s
-  DRAM Write Bandwidth:
-    rst: Achieved write bandwidth to system memory. High write bandwidth indicates write-intensive workloads. Combined with read bandwidth, this shows total memory traffic between the GPU and system memory.
-    unit: GB/s
-  SysArb Stall Rate:
-    rst: ''
-    unit: Percent
-  DRAM Read Requests:
-    rst: DRAM read requests per client group from the GCEA memory path (GCEA_RDRAM_REQ_PER_CLIGRP_sum / $denom).
-    unit: Requests per Normalization Unit
-  DRAM Write Requests:
-    rst: DRAM write requests per client group from the GCEA memory path (GCEA_WDRAM_REQ_PER_CLIGRP_sum / $denom).
-    unit: Requests per Normalization Unit
-  Read Returns:
-    rst: Valid read-return events on the GCEA return path per normalization unit (GCEA_RRET_VLD_sum / $denom).
-    unit: Count per Normalization Unit
-  Write Returns:
-    rst: Valid write-return events on the GCEA return path per normalization unit (GCEA_WRET_VLD_sum / $denom).
-    unit: Count per Normalization Unit
 Roofline Performance Rates:
   VALU FLOPs:
     rst: 'Floating-point operations per second on the VALU. Peak is based on FP32 FMA single-issue (128 FLOPs/CU/cycle). VOPD dual-issue doubles throughput: FP32 to 256, FP16 packed to 512 FLOPs/CU/cycle. Uses aggregate instruction counter.'
@@ -271,10 +285,32 @@ Wave Dispatch Statistics:
   Wave Dispatch Rate:
     rst: Average wavefronts dispatched per GPU active cycle. Values greater than one indicate parallel dispatch across multiple shader engines. Low dispatch rates may indicate workload submission bottlenecks or insufficient parallelism in the application.
     unit: Wavefronts per Cycle
-WGP Utilization:
-  WGP Utilization:
-    rst: Percentage of GPU active cycles where the Workgroup Processor is busy executing wavefronts. RDNA 3.5 WGPs contain two compute units, each with dual SIMD32 units. Low utilization may indicate insufficient parallelism or resource bottlenecks.
-    unit: Percent
+Wavefront Launch Stats:
+  Grid Size:
+    rst: ''
+    unit: Work-items
+  Workgroup Size:
+    rst: ''
+    unit: Work-items
+  VGPRs:
+    rst: 'The number of architected vector general-purpose registers allocated for the kernel. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
+    unit: Registers
+  SGPRs:
+    rst: 'The number of scalar general-purpose registers allocated for the kernel. Note: this may not exactly match the number of SGPRs requested by the compiler due to allocation granularity.'
+    unit: Registers
+  LDS Allocation:
+    rst: 'The number of bytes of LDS memory (or, shared memory) allocated per workgroup. Note: This may also be larger than what was requested at compile time due to both allocation granularity and dynamic per-dispatch LDS allocations.'
+    unit: Bytes per Workgroup
+  Scratch Allocation:
+    rst: ''
+    unit: Bytes per Work-item
+Wave Dispatch:
+  Dispatched Waves:
+    rst: ''
+    unit: Wavefronts
+  Dispatched Threads:
+    rst: ''
+    unit: Threads
 Wave Life:
   Wave Life:
     rst: Average number of cycles from wavefront creation to completion. Longer wave life indicates more execution time per wavefront, which may be due to complex kernels, memory latency, or synchronization waits.
@@ -306,6 +342,22 @@ Wave Instruction Mix:
     unit: Count per Normalization Unit
   Instructions - LDS:
     rst: Number of LDS instructions issued by the shader, including FLAT instructions that resolve to LDS. This counts instructions rather than data movement, so it does not distinguish reads from writes.
+    unit: Count per Normalization Unit
+VMEM Instruction Mix:
+  Instructions - VMEM Flat:
+    rst: ''
+    unit: Count per Normalization Unit
+  Instructions - TEX Load:
+    rst: ''
+    unit: Count per Normalization Unit
+  Instructions - TEX Store:
+    rst: ''
+    unit: Count per Normalization Unit
+  Instructions - Flat Load:
+    rst: ''
+    unit: Count per Normalization Unit
+  Instructions - Flat Store:
+    rst: ''
     unit: Count per Normalization Unit
 LDS Instruction Mix:
   LDS Direct Load Instructions:
@@ -522,6 +574,10 @@ Shader Engine Utilization:
   TA Busy:
     rst: Percentage of GPU active time the Texture Addresser was busy processing memory address calculations. High TA busy indicates active texture or buffer memory operations. This reflects the address generation workload for memory requests.
     unit: Percent
+WGP Utilization:
+  WGP Utilization:
+    rst: Percentage of GPU active cycles where the Workgroup Processor is busy executing wavefronts. RDNA 3.5 WGPs contain two compute units, each with dual SIMD32 units. Low utilization may indicate insufficient parallelism or resource bottlenecks.
+    unit: Percent
 Command processor fetcher (CPF):
   CPC Busy:
     rst: Percentage of time the Command Processor Compute is actively processing commands. High busy percentage indicates efficient command stream processing. Low values may indicate gaps in workload submission or dispatch bottlenecks.
@@ -657,59 +713,3 @@ L2-Fabric interface metrics:
   TA Busy:
     rst: Percentage of GPU active time the Texture Addresser was busy processing memory address calculations. High TA busy indicates active texture or buffer memory operations. This reflects the address generation workload for memory requests.
     unit: Percent
-Memory chart - TCP-GL1 Interface:
-  TCP-GL1 Read Bandwidth:
-    rst: ''
-    unit: GB/s
-  TCP-GL1 Write Bandwidth:
-    rst: ''
-    unit: GB/s
-Memory chart - GL1-GL2 Interface:
-  GL1-GL2 Read Bandwidth:
-    rst: Read bandwidth between L1 (GL1C) and L2 (GL2C) caches. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
-    unit: GB/s
-  GL1-GL2 Write Bandwidth:
-    rst: ''
-    unit: GB/s
-Wavefront Launch Stats:
-  Grid Size:
-    rst: ''
-    unit: Work-items
-  Workgroup Size:
-    rst: ''
-    unit: Work-items
-  VGPRs:
-    rst: 'The number of architected vector general-purpose registers allocated for the kernel. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
-    unit: Registers
-  SGPRs:
-    rst: 'The number of scalar general-purpose registers allocated for the kernel. Note: this may not exactly match the number of SGPRs requested by the compiler due to allocation granularity.'
-    unit: Registers
-  LDS Allocation:
-    rst: 'The number of bytes of LDS memory (or, shared memory) allocated per workgroup. Note: This may also be larger than what was requested at compile time due to both allocation granularity and dynamic per-dispatch LDS allocations.'
-    unit: Bytes per Workgroup
-  Scratch Allocation:
-    rst: ''
-    unit: Bytes per Work-item
-Wave Dispatch:
-  Dispatched Waves:
-    rst: ''
-    unit: Wavefronts
-  Dispatched Threads:
-    rst: ''
-    unit: Threads
-VMEM Instruction Mix:
-  Instructions - VMEM Flat:
-    rst: ''
-    unit: Count per Normalization Unit
-  Instructions - TEX Load:
-    rst: ''
-    unit: Count per Normalization Unit
-  Instructions - TEX Store:
-    rst: ''
-    unit: Count per Normalization Unit
-  Instructions - Flat Load:
-    rst: ''
-    unit: Count per Normalization Unit
-  Instructions - Flat Store:
-    rst: ''
-    unit: Count per Normalization Unit

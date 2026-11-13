@@ -547,23 +547,6 @@ def preserve_manual_rst_edits(new_descriptions: dict, existing_per_arch: dict) -
     return new_descriptions
 
 
-def order_like_existing(descriptions: dict, existing_per_arch: dict) -> dict:
-    """
-    Order sections and metrics as the existing per-arch YAML does, so a sync
-    changes only what changed; new sections and metrics go last.
-    """
-    sections = [s for s in existing_per_arch if s in descriptions]
-    sections += [s for s in descriptions if s not in existing_per_arch]
-    ordered: Dict[str, Dict[str, dict]] = {}
-    for section in sections:
-        metrics = descriptions[section]
-        existing = existing_per_arch.get(section) or {}
-        names = [m for m in existing if m in metrics]
-        names += [m for m in metrics if m not in existing]
-        ordered[section] = {name: metrics[name] for name in names}
-    return ordered
-
-
 def resolved_docs_target_archs(per_arch_dir: Union[str, Path]) -> list[str]:
     """Doc emit list: the arch of every per-arch YAML on disk."""
     suffix = "_metrics_description.yaml"
@@ -683,7 +666,6 @@ def sync_arch(arch_name: str, per_arch_metrics_dir: str) -> bool:
 
     # 3) Preserve manual RST edits (if rst != plain, keep existing RST)
     descriptions = preserve_manual_rst_edits(descriptions, existing_per_arch)
-    descriptions = order_like_existing(descriptions, existing_per_arch)
 
     # 4) Write per-arch file (with preserved manual RST edits)
     update_per_arch_metrics_file(arch_name, descriptions, per_arch_metrics_dir)

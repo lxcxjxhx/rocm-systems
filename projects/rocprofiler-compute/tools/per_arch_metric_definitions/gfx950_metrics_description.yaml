@@ -27,6 +27,10 @@ System Speed-of-Light:
     plain: 'The total number of 64-bit floating point MFMA operations executed per second. Note: this does not include any 64-bit floating point operations from VALU instructions.'
     rst: 'The total number of 64-bit floating point MFMA operations executed per second. Note: this does not include any 64-bit floating point operations from VALU instructions.'
     unit: GFLOP/s
+  MFMA FLOPs (F6F4):
+    plain: The total number of 4-bit and 6-bit floating-point operations executed on MFMA units, per second. F6/F4 formats are supported in AMD Instinct MI350 series (gfx950) and later only.
+    rst: The total number of 4-bit and 6-bit floating-point operations executed on MFMA units, per second. F6/F4 formats are supported in AMD Instinct MI350 series (gfx950) and later only.
+    unit: GFLOP/s
   MFMA IOPs (Int8):
     plain: 'The total number of 8-bit integer MFMA operations executed per second. Note: this does not include any 8-bit integer operations from VALU instructions.'
     rst: 'The total number of 8-bit integer MFMA operations executed per second. Note: this does not include any 8-bit integer operations from VALU instructions.'
@@ -127,10 +131,6 @@ System Speed-of-Light:
     plain: The percent of total SIMD cycles in the kernel where any SIMD on a CU was actively doing any work, summed over all CUs. Low values (less than 100%) indicate that the accelerator was not fully saturated by the kernel, or a potential load-imbalance issue.
     rst: The percent of :ref:`total SIMD cycles <total-simd-cycles>` in the kernel where any :ref:`SIMD <desc-valu>` on a CU was actively doing any work, summed over all CUs. Low values (less than 100%) indicate that the accelerator was not fully saturated by the kernel, or a potential load-imbalance issue.
     unit: Percent
-  MFMA FLOPs (F6F4):
-    plain: The total number of 4-bit and 6-bit floating-point operations executed on MFMA units, per second. F6/F4 formats are supported in AMD Instinct MI350 series (gfx950) and later only.
-    rst: The total number of 4-bit and 6-bit floating-point operations executed on MFMA units, per second. F6/F4 formats are supported in AMD Instinct MI350 series (gfx950) and later only.
-    unit: GFLOP/s
 Memory chart:
   Wavefront Occupancy:
     plain: Resident wavefronts per active CU, averaged over GPU-active cycles, as a percent of the maximum wavefronts per CU.
@@ -309,6 +309,22 @@ Roofline Performance Rates:
     plain: 'The total 64-bit floating-point operations executed per second on the VALU. Note: this does not include any F64 operations from MFMA instructions.'
     rst: 'The total 64-bit floating-point operations executed per second on the VALU. Note: this does not include any F64 operations from MFMA instructions.'
     unit: GFLOP/s
+  MFMA FLOPs (F64):
+    plain: 'The total number of 64-bit floating point MFMA operations executed per second. Note: this does not include any 64-bit floating point operations from VALU instructions.'
+    rst: 'The total number of 64-bit floating point MFMA operations executed per second. Note: this does not include any 64-bit floating point operations from VALU instructions.'
+    unit: GFLOP/s
+  MFMA FLOPs (F32):
+    plain: 'The total number of 32-bit floating point MFMA operations executed per second. Note: this does not include any 32-bit floating point operations from VALU instructions.'
+    rst: 'The total number of 32-bit floating point MFMA operations executed per second. Note: this does not include any 32-bit floating point operations from VALU instructions.'
+    unit: GFLOP/s
+  MFMA FLOPs (F16):
+    plain: 'The total number of 16-bit floating point MFMA operations executed per second. Note: this does not include any 16-bit floating point operations from VALU instructions.'
+    rst: 'The total number of 16-bit floating point MFMA operations executed per second. Note: this does not include any 16-bit floating point operations from VALU instructions.'
+    unit: GFLOP/s
+  MFMA FLOPs (BF16):
+    plain: 'The total number of 16-bit brain floating point MFMA operations executed per second. Note: this does not include any 16-bit brain floating point operations from VALU instructions.'
+    rst: 'The total number of 16-bit brain floating point MFMA operations executed per second. Note: this does not include any 16-bit brain floating point operations from VALU instructions.'
+    unit: GFLOP/s
   MFMA FLOPs (F8):
     plain: The total number of 8-bit floating point MFMA operations executed per second.
     rst: The total number of 8-bit floating point MFMA operations executed per second.
@@ -316,22 +332,6 @@ Roofline Performance Rates:
   MFMA FLOPs (MXF8):
     plain: The total number of 8-bit microscaling floating point MFMA operations executed per second.
     rst: The total number of 8-bit microscaling floating point MFMA operations executed per second.
-    unit: GFLOP/s
-  MFMA FLOPs (BF16):
-    plain: 'The total number of 16-bit brain floating point MFMA operations executed per second. Note: this does not include any 16-bit brain floating point operations from VALU instructions.'
-    rst: 'The total number of 16-bit brain floating point MFMA operations executed per second. Note: this does not include any 16-bit brain floating point operations from VALU instructions.'
-    unit: GFLOP/s
-  MFMA FLOPs (F16):
-    plain: 'The total number of 16-bit floating point MFMA operations executed per second. Note: this does not include any 16-bit floating point operations from VALU instructions.'
-    rst: 'The total number of 16-bit floating point MFMA operations executed per second. Note: this does not include any 16-bit floating point operations from VALU instructions.'
-    unit: GFLOP/s
-  MFMA FLOPs (F32):
-    plain: 'The total number of 32-bit floating point MFMA operations executed per second. Note: this does not include any 32-bit floating point operations from VALU instructions.'
-    rst: 'The total number of 32-bit floating point MFMA operations executed per second. Note: this does not include any 32-bit floating point operations from VALU instructions.'
-    unit: GFLOP/s
-  MFMA FLOPs (F64):
-    plain: 'The total number of 64-bit floating point MFMA operations executed per second. Note: this does not include any 64-bit floating point operations from VALU instructions.'
-    rst: 'The total number of 64-bit floating point MFMA operations executed per second. Note: this does not include any 64-bit floating point operations from VALU instructions.'
     unit: GFLOP/s
   MFMA FLOPs (F6F4):
     plain: The total number of 4-bit and 6-bit floating-point operations executed on MFMA units, per second. F6/F4 formats are supported in AMD Instinct MI350 series (gfx950) and later only.
@@ -358,17 +358,17 @@ Roofline Performance Rates:
     rst: Indicates the maximum amount of bytes that could have been loaded from, stored to, or atomically updated in the LDS divided by total duration. Does not take into account the execution mask of the wavefront when the instruction was executed.
     unit: GB/s
 Roofline Plot Points:
-  AI L1:
-    plain: The Arithmetic Intensity (AI) relative to the L1 Cache. It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between the L1 cache and the processing units.
-    rst: The Arithmetic Intensity (AI) relative to the L1 Cache. It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between the L1 cache and the processing units.
+  AI HBM:
+    plain: The Arithmetic Intensity (AI) relative to High-Bandwidth Memory (HBM). It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between HBM and the L2 cache.
+    rst: The Arithmetic Intensity (AI) relative to High-Bandwidth Memory (HBM). It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between HBM and the L2 cache.
     unit: FLOPs/Byte
   AI L2:
     plain: The Arithmetic Intensity (AI) relative to the L2 Cache. It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between the L2 cache and the L1 cache.
     rst: The Arithmetic Intensity (AI) relative to the L2 Cache. It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between the L2 cache and the L1 cache.
     unit: FLOPs/Byte
-  AI HBM:
-    plain: The Arithmetic Intensity (AI) relative to High-Bandwidth Memory (HBM). It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between HBM and the L2 cache.
-    rst: The Arithmetic Intensity (AI) relative to High-Bandwidth Memory (HBM). It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between HBM and the L2 cache.
+  AI L1:
+    plain: The Arithmetic Intensity (AI) relative to the L1 Cache. It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between the L1 cache and the processing units.
+    rst: The Arithmetic Intensity (AI) relative to the L1 Cache. It is the ratio of total floating-point operations (FLOPs) to total bytes transferred between the L1 cache and the processing units.
     unit: FLOPs/Byte
   AI LDS:
     plain: Arithmetic Intensity relative to the Local Data Share (LDS). Higher values indicate more compute per byte of LDS traffic, suggesting effective reuse of shared data within a workgroup. Lower values suggest memory-bound behavior limited by LDS bandwidth or bank-conflict pressure.
@@ -400,10 +400,6 @@ Command processor fetcher (CPF):
     rst: Percent of CPF busy cycles where the CPF was stalled by address translation.
     unit: Percent
 Command processor packet processor (CPC):
-  CPC Utilization:
-    plain: Percent of total cycles where the CPC was busy actively doing any work. The ratio of CPC busy cycles over total cycles counted by the CPC.
-    rst: Percent of total cycles where the CPC was busy actively doing any work. The ratio of CPC busy cycles over total cycles counted by the CPC.
-    unit: Percent
   CPC SYNC FIFO Full Rate:
     plain: Percent of CPC sync counter request FIFO busy cycles where the FIFO was full. High values indicate backpressure in synchronization counter processing.
     rst: Percent of CPC sync counter request FIFO busy cycles where the FIFO was full. High values indicate backpressure in synchronization counter processing.
@@ -415,6 +411,10 @@ Command processor packet processor (CPC):
   CPC ADC Utilization:
     plain: Percent of ADC busy cycles spent dispatching thread groups. The ADC is responsible for sending workgroups from the command processor to the workgroup manager.
     rst: Percent of ADC busy cycles spent dispatching thread groups. The ADC is responsible for sending workgroups from the command processor to the workgroup manager.
+    unit: Percent
+  CPC Utilization:
+    plain: Percent of total cycles where the CPC was busy actively doing any work. The ratio of CPC busy cycles over total cycles counted by the CPC.
+    rst: Percent of total cycles where the CPC was busy actively doing any work. The ratio of CPC busy cycles over total cycles counted by the CPC.
     unit: Percent
   CPC Stall Rate:
     plain: Percent of CPC busy cycles where the CPC was stalled for any reason.
@@ -872,22 +872,10 @@ LDS Speed-of-Light:
     rst: Indicates the percentage of active LDS cycles that were spent servicing bank conflicts. Calculated as the ratio of LDS cycles spent servicing bank conflicts over the number of LDS cycles that would have been required to move the same amount of data in an uncontended access. [#lds-bank-conflict]_
     unit: Percent
 LDS Statistics:
-  Theoretical Bandwidth:
-    plain: Indicates the maximum amount of bytes that could have been loaded from, stored to, or atomically updated in the LDS divided by total duration. Does not take into account the execution mask of the wavefront when the instruction was executed.
-    rst: Indicates the maximum amount of bytes that could have been loaded from, stored to, or atomically updated in the LDS divided by total duration. Does *not* take into account the execution mask of the wavefront when the instruction was executed. See the :ref:`LDS bandwidth example <lds-bandwidth>` for more detail.
-    unit: GB/s
-  LDS LOAD Bandwidth:
-    plain: The effective bandwidth of LDS load operations, accounting for the work-items executed (execution mask). Calculated as the total bytes loaded from LDS divided by the kernel duration.
-    rst: The effective bandwidth of LDS load operations, accounting for the work-items executed (execution mask). Calculated as the total bytes loaded from LDS divided by the kernel duration.
-    unit: GB/s
-  LDS STORE Bandwidth:
-    plain: The effective bandwidth of LDS store operations, accounting for the work-items executed (execution mask). Calculated as the total bytes stored to LDS divided by the kernel duration.
-    rst: The effective bandwidth of LDS store operations, accounting for the work-items executed (execution mask). Calculated as the total bytes stored to LDS divided by the kernel duration.
-    unit: GB/s
-  LDS ATOMIC Bandwidth:
-    plain: The effective bandwidth of LDS atomic operations, accounting for the work-items executed (execution mask). Calculated as the total bytes accessed by LDS atomic operations divided by the kernel duration.
-    rst: The effective bandwidth of LDS atomic operations, accounting for the work-items executed (execution mask). Calculated as the total bytes accessed by LDS atomic operations divided by the kernel duration.
-    unit: GB/s
+  LDS Instructions:
+    plain: The total number of LDS instructions (including, but not limited to, read/write/atomics and HIP's __shfl instructions) executed per normalization unit.
+    rst: The total number of LDS instructions (including, but not limited to, read/write/atomics and HIP's ``__shfl`` instructions) executed per :ref:`normalization unit <normalization-units>`.
+    unit: Instructions per Normalization Unit
   LDS LOAD:
     plain: The total number of LDS load instructions per normalization unit.
     rst: The total number of LDS load instructions per normalization unit.
@@ -900,10 +888,22 @@ LDS Statistics:
     plain: The total number of LDS atomic instructions per normalization unit.
     rst: The total number of LDS atomic instructions per normalization unit.
     unit: Instructions per Normalization Unit
-  LDS Instructions:
-    plain: The total number of LDS instructions (including, but not limited to, read/write/atomics and HIP's __shfl instructions) executed per normalization unit.
-    rst: The total number of LDS instructions (including, but not limited to, read/write/atomics and HIP's ``__shfl`` instructions) executed per :ref:`normalization unit <normalization-units>`.
-    unit: Instructions per Normalization Unit
+  LDS LOAD Bandwidth:
+    plain: The effective bandwidth of LDS load operations, accounting for the work-items executed (execution mask). Calculated as the total bytes loaded from LDS divided by the kernel duration.
+    rst: The effective bandwidth of LDS load operations, accounting for the work-items executed (execution mask). Calculated as the total bytes loaded from LDS divided by the kernel duration.
+    unit: GB/s
+  LDS STORE Bandwidth:
+    plain: The effective bandwidth of LDS store operations, accounting for the work-items executed (execution mask). Calculated as the total bytes stored to LDS divided by the kernel duration.
+    rst: The effective bandwidth of LDS store operations, accounting for the work-items executed (execution mask). Calculated as the total bytes stored to LDS divided by the kernel duration.
+    unit: GB/s
+  LDS ATOMIC Bandwidth:
+    plain: The effective bandwidth of LDS atomic operations, accounting for the work-items executed (execution mask). Calculated as the total bytes accessed by LDS atomic operations divided by the kernel duration.
+    rst: The effective bandwidth of LDS atomic operations, accounting for the work-items executed (execution mask). Calculated as the total bytes accessed by LDS atomic operations divided by the kernel duration.
+    unit: GB/s
+  Theoretical Bandwidth:
+    plain: Indicates the maximum amount of bytes that could have been loaded from, stored to, or atomically updated in the LDS divided by total duration. Does not take into account the execution mask of the wavefront when the instruction was executed.
+    rst: Indicates the maximum amount of bytes that could have been loaded from, stored to, or atomically updated in the LDS divided by total duration. Does *not* take into account the execution mask of the wavefront when the instruction was executed. See the :ref:`LDS bandwidth example <lds-bandwidth>` for more detail.
+    unit: GB/s
   LDS Latency:
     plain: The average number of round-trip cycles (i.e., from issue to data-return acknowledgment) required for an LDS instruction to complete.
     rst: The average number of round-trip cycles (i.e., from issue to data-return acknowledgment) required for an LDS instruction to complete.
@@ -1038,14 +1038,14 @@ Scalar L1D cache accesses:
     rst: The total number of sL1D read requests made for a sixteen dwords of data (64B), per :ref:`normalization unit <normalization-units>`.
     unit: Requests per Normalization Unit
 Scalar L1D Cache - L2 Interface:
-  sL1D-L2 BW:
-    plain: The total number of bytes read from, written to, or atomically updated across the sL1D<->L2 interface, divided by total duration. Note that sL1D writes and atomics are typically unused on current CDNA accelerators, so in the majority of cases this can be interpreted as an sL1D->L2 read bandwidth.
-    rst: The total number of bytes read from, written to, or atomically updated across the sL1D\u2194:doc:`L2 <l2-cache>` interface, divided by total duration. Note that sL1D writes and atomics are typically unused on current CDNA accelerators, so in the majority of cases this can be interpreted as an sL1D\u2192L2 read bandwidth.
-    unit: GB/s
   Atomic Req:
     plain: The total number of atomic requests from sL1D to the L2, per normalization unit. Atomic requests to the sL1D are typically unused on current CDNA accelerators.
     rst: The total number of atomic requests from sL1D to the :doc:`L2 <l2-cache>`, per :ref:`normalization unit <normalization-units>`. Typically unused on current CDNA accelerators.
     unit: Requests per Normalization Unit
+  sL1D-L2 BW:
+    plain: The total number of bytes read from, written to, or atomically updated across the sL1D<->L2 interface, divided by total duration. Note that sL1D writes and atomics are typically unused on current CDNA accelerators, so in the majority of cases this can be interpreted as an sL1D->L2 read bandwidth.
+    rst: The total number of bytes read from, written to, or atomically updated across the sL1D\u2194:doc:`L2 <l2-cache>` interface, divided by total duration. Note that sL1D writes and atomics are typically unused on current CDNA accelerators, so in the majority of cases this can be interpreted as an sL1D\u2192L2 read bandwidth.
+    unit: GB/s
   Read Req:
     plain: The total number of read requests from sL1D to the L2 per normalization unit.
     rst: The total number of read requests from sL1D to the :doc:`L2 <l2-cache>`, per :ref:`normalization unit <normalization-units>`.
@@ -1308,17 +1308,13 @@ vL1D cache access metrics:
     rst: Calculated as the average number of cycles that the vL1D cache took to issue and receive acknowledgement of a write request to the :doc:`L2 Cache <l2-cache>`. This number also includes requests for atomics without return values.
     unit: Cycles per Normalization Unit
 L1 Unified Translation Cache (UTCL1):
-  Inflight Req:
-    plain: The sum of inflight client-to-UTCL1 translation requests per cycle, per normalization unit. Measures the average number of translation requests actively being processed by the UTCL1 at any given time.
-    rst: The sum of inflight client-to-UTCL1 translation requests per cycle, per normalization unit. Measures the average number of translation requests actively being processed by the UTCL1 at any given time.
-    unit: Requests per Normalization Unit
-  Misses under Translation Miss:
-    plain: The number of translation requests that missed in the UTCL1 while another miss for the same translation was already being processed, per normalization unit. These are secondary misses that occur before the first miss completes.
-    rst: The number of translation requests that missed in the UTCL1 while another miss for the same translation was already being processed, per normalization unit. These are secondary misses that occur before the first miss completes.
-    unit: Requests per Normalization Unit
   Req:
     plain: The number of translation requests made to the UTCL1 per normalization unit.
     rst: The number of translation requests made to the UTCL1 per normalization unit.
+    unit: Requests per Normalization Unit
+  Inflight Req:
+    plain: The sum of inflight client-to-UTCL1 translation requests per cycle, per normalization unit. Measures the average number of translation requests actively being processed by the UTCL1 at any given time.
+    rst: The sum of inflight client-to-UTCL1 translation requests per cycle, per normalization unit. Measures the average number of translation requests actively being processed by the UTCL1 at any given time.
     unit: Requests per Normalization Unit
   Hit Ratio:
     plain: The ratio of the number of translation requests that hit in the UTCL1 divided by the total number of translation requests made to the UTCL1.
@@ -1331,6 +1327,10 @@ L1 Unified Translation Cache (UTCL1):
   Translation Misses:
     plain: The total number of translation requests that missed in the UTCL1 due to translation not being present in the cache, per normalization unit.
     rst: The total number of translation requests that missed in the UTCL1 due to translation not being present in the cache, per normalization unit.
+    unit: Requests per Normalization Unit
+  Misses under Translation Miss:
+    plain: The number of translation requests that missed in the UTCL1 while another miss for the same translation was already being processed, per normalization unit. These are secondary misses that occur before the first miss completes.
+    rst: The number of translation requests that missed in the UTCL1 while another miss for the same translation was already being processed, per normalization unit. These are secondary misses that occur before the first miss completes.
     unit: Requests per Normalization Unit
   Permission Misses:
     plain: The total number of translation requests that missed in the UTCL1 due to a permission error, per normalization unit. This is unused and expected to be zero in most configurations for modern CDNA accelerators.
@@ -1459,13 +1459,13 @@ L2 cache accesses:
     plain: Number of L2 cache bypass requests measured at the tag block. These requests skip normal cache lookup and go directly to memory, typically for uncacheable or write-combined memory accesses.
     rst: Number of L2 cache bypass requests measured at the tag block. These requests skip normal cache lookup and go directly to memory, typically for uncacheable or write-combined memory accesses.
     unit: Requests per Normalization Unit
-  Input Buffer Req:
-    plain: Number of raw memory requests received through the L2 cache Input Buffer (IB) from compute units and other hardware clients. This counts all incoming requests before cache lookup processing and represents the total incoming demand on the L2 cache.
-    rst: Number of raw memory requests received through the L2 cache Input Buffer (IB) from compute units and other hardware clients. This counts all incoming requests before cache lookup processing and represents the total incoming demand on the L2 cache.
-    unit: Requests per Normalization Unit
   Probe Req:
     plain: The number of coherence probe requests made to the L2 cache from outside the accelerator. On an MI2XX, probe requests may be generated by, for example, writes to fine-grained device memory or by writes to coarse-grained device memory.
     rst: The number of coherence probe requests made to the L2 cache from outside the accelerator. On an :ref:`MI2XX <mixxx-note>`, probe requests may be generated by, for example, writes to :ref:`fine-grained device <memory-type>` memory or by writes to :ref:`coarse-grained <memory-type>` device memory.
+    unit: Requests per Normalization Unit
+  Input Buffer Req:
+    plain: Number of raw memory requests received through the L2 cache Input Buffer (IB) from compute units and other hardware clients. This counts all incoming requests before cache lookup processing and represents the total incoming demand on the L2 cache.
+    rst: Number of raw memory requests received through the L2 cache Input Buffer (IB) from compute units and other hardware clients. This counts all incoming requests before cache lookup processing and represents the total incoming demand on the L2 cache.
     unit: Requests per Normalization Unit
   Cache Hit:
     plain: The ratio of the number of L2 cache line requests that hit in the L2 cache over the total number of incoming cache line requests to the L2 cache.
@@ -1516,10 +1516,6 @@ L2 cache accesses:
     rst: The total number of requests to the L2 that go to Read-Write coherent memory (RW) allocations. See the :ref:`memory-type` for more information.
     unit: Requests per Normalization Unit
 L2 - Fabric Interface stalls:
-  Write - Credit Starvation:
-    plain: The number of cycles the L2-Fabric interface was stalled on write or atomic requests to any memory location because too many write/atomic requests were currently in flight, as a percent of the total active L2 cycles.
-    rst: The number of cycles the L2-Fabric interface was stalled on write or atomic requests to any memory location because too many write/atomic requests were currently in flight, as a percent of the :ref:`total active L2 cycles <total-active-l2-cycles>`.
-    unit: Percent
   Read - PCIe Stall:
     plain: The number of cycles the L2-Fabric interface was stalled on read requests to remote PCIe connected accelerators or CPUs as a percent of the total active L2 cycles.
     rst: The number of cycles the L2-Fabric interface was stalled on read requests to remote PCIe connected accelerators [#inf]_ or CPUs as a percent of the :ref:`total active L2 cycles <total-active-l2-cycles>`.
@@ -1543,6 +1539,10 @@ L2 - Fabric Interface stalls:
   Write - HBM Stall:
     plain: The number of cycles the L2-Fabric interface was stalled on write or atomic requests to accelerator's local HBM as a percent of the total active L2 cycles.
     rst: The number of cycles the L2-Fabric interface was stalled on write or atomic requests to accelerator's local HBM as a percent of the total active L2 cycles.
+    unit: Percent
+  Write - Credit Starvation:
+    plain: The number of cycles the L2-Fabric interface was stalled on write or atomic requests to any memory location because too many write/atomic requests were currently in flight, as a percent of the total active L2 cycles.
+    rst: The number of cycles the L2-Fabric interface was stalled on write or atomic requests to any memory location because too many write/atomic requests were currently in flight, as a percent of the :ref:`total active L2 cycles <total-active-l2-cycles>`.
     unit: Percent
 L2 - Fabric interface detailed metrics:
   Read (32B):
@@ -1597,6 +1597,10 @@ L2 - Fabric interface detailed metrics:
     plain: Total number of bytes due to L2 write requests routed to Infinity Fabric targeting the accelerator's local HBM (DRAM), divided by total duration.
     rst: Total number of bytes due to L2 write requests due to HBM traffic, divided by total duration. See :ref:`l2-detailed-metrics` for more detail.
     unit: GB/s
+  Atomic:
+    plain: The total number of L2 requests to Infinity Fabric to atomically update 32B or 64B of data in any memory location, per normalization unit. See Request flow for more detail. Note that on current CDNA accelerators, such as the MI2XX, requests are only considered atomic by Infinity Fabric if they are targeted at non-write-cacheable memory, such as fine-grained memory allocations or uncached memory allocations on the MI2XX.
+    rst: The total number of L2 requests to Infinity Fabric to atomically update 32B or 64B of data in any memory location, per :ref:`normalization unit <normalization-units>`. See :ref:`l2-request-flow` for more detail. Note that on current CDNA accelerators, such as the :ref:`MI2XX <mixxx-note>`, requests are only considered *atomic* by Infinity Fabric if they are targeted at non-write-cacheable memory, such as :ref:`fine-grained memory <memory-type>` allocations or :ref:`uncached memory <memory-type>` allocations on the MI2XX.
+    unit: Requests per Normalization Unit
   Atomic Bandwidth - PCIe:
     plain: Total number of bytes due to L2 atomic requests routed to PCIe (CPU or non-xGMI connected GPU traffic), divided by total duration.
     rst: Total number of bytes due to L2 atomic requests due to PCIe traffic, divided by total duration. See :ref:`l2-detailed-metrics` for more detail.
@@ -1609,7 +1613,3 @@ L2 - Fabric interface detailed metrics:
     plain: Total number of bytes due to L2 atomic requests routed to Infinity Fabric targeting the accelerator's local HBM (DRAM), divided by total duration.
     rst: Total number of bytes due to L2 atomic requests due to HBM traffic, divided by total duration. See :ref:`l2-detailed-metrics` for more detail.
     unit: GB/s
-  Atomic:
-    plain: The total number of L2 requests to Infinity Fabric to atomically update 32B or 64B of data in any memory location, per normalization unit. See Request flow for more detail. Note that on current CDNA accelerators, such as the MI2XX, requests are only considered atomic by Infinity Fabric if they are targeted at non-write-cacheable memory, such as fine-grained memory allocations or uncached memory allocations on the MI2XX.
-    rst: The total number of L2 requests to Infinity Fabric to atomically update 32B or 64B of data in any memory location, per :ref:`normalization unit <normalization-units>`. See :ref:`l2-request-flow` for more detail. Note that on current CDNA accelerators, such as the :ref:`MI2XX <mixxx-note>`, requests are only considered *atomic* by Infinity Fabric if they are targeted at non-write-cacheable memory, such as :ref:`fine-grained memory <memory-type>` allocations or :ref:`uncached memory <memory-type>` allocations on the MI2XX.
-    unit: Requests per Normalization Unit
