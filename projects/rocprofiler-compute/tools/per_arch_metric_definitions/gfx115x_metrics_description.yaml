@@ -20,12 +20,12 @@ System Speed-of-Light:
     rst: Percentage of GL2 cache requests that are serviced from cache without accessing system memory. Higher hit rates reduce memory bandwidth pressure and improve performance. Low hit rates may indicate poor data locality or working sets that exceed cache capacity.
     unit: Percent
   GL2-Fabric Read BW:
-    plain: Read bandwidth between the GL2 cache and the memory fabric/system memory. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
-    rst: Read bandwidth between the GL2 cache and the memory fabric/system memory. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
+    plain: The number of bytes the GL2 cache reads from the memory fabric or system memory, divided by total duration. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Its peak requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
+    rst: The number of bytes the GL2 cache reads from the memory fabric or system memory, divided by total duration. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Its peak requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
     unit: GB/s
   GL2-Fabric Write BW:
-    plain: Write bandwidth between the GL2 cache and the memory fabric/system memory. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
-    rst: Write bandwidth between the GL2 cache and the memory fabric/system memory. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
+    plain: The number of bytes the GL2 cache writes to the memory fabric or system memory, divided by total duration. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
+    rst: The number of bytes the GL2 cache writes to the memory fabric or system memory, divided by total duration. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
     unit: GB/s
   LDS Bank Conflicts:
     plain: Number of Local Data Share bank conflicts during execution. Bank conflicts occur when multiple work-items in a wavefront access the same LDS bank simultaneously, causing serialized accesses. Reducing conflicts improves shared memory throughput.
@@ -44,36 +44,36 @@ System Speed-of-Light:
     rst: Percentage of GL0 vector cache (TCP Cache) requests that hit in cache. The TCP cache is the first-level cache for vector memory operations. High hit rates reduce traffic to the GL1 cache and improve memory access latency.
     unit: Percent
   GL0 Cache BW (TCP Cache):
-    plain: Bandwidth of requests to the GL0 vector cache (TCP Cache). This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
-    rst: Bandwidth of requests to the GL0 vector cache (TCP Cache). This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
+    plain: The number of bytes requested from the GL0 vector cache (TCP Cache), divided by total duration. This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
+    rst: The number of bytes requested from the GL0 vector cache (TCP Cache), divided by total duration. This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
     unit: GB/s
   GL1 Cache Hit Rate:
     plain: Percentage of L1 cache (GL1C) requests that hit in cache. GL1C is shared across multiple workgroup processors within a shader engine. Higher hit rates reduce traffic to the L2 cache and improve performance.
     rst: Percentage of L1 cache (GL1C) requests that hit in cache. GL1C is shared across multiple workgroup processors within a shader engine. Higher hit rates reduce traffic to the L2 cache and improve performance.
     unit: Percent
   GL1 Cache Read BW:
-    plain: Read bandwidth between L1 (GL1C) and L2 (GL2C) caches. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
-    rst: Read bandwidth between L1 (GL1C) and L2 (GL2C) caches. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
+    plain: The number of bytes L1 (GL1C) reads from L2 (GL2C), divided by total duration. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
+    rst: The number of bytes L1 (GL1C) reads from L2 (GL2C), divided by total duration. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
     unit: GB/s
   GL2 Cache BW:
-    plain: Bandwidth of read operations at the L2 cache level. This metric shows overall L2 cache utilization and helps identify memory subsystem bottlenecks.
-    rst: Bandwidth of read operations at the L2 cache level. This metric shows overall L2 cache utilization and helps identify memory subsystem bottlenecks.
+    plain: The number of bytes read from the L2 cache, divided by total duration. It shows L2 cache read traffic and helps identify memory subsystem bottlenecks.
+    rst: The number of bytes read from the L2 cache, divided by total duration. It shows L2 cache read traffic and helps identify memory subsystem bottlenecks.
     unit: GB/s
   Scalar Data Cache Hit Rate:
-    plain: Percentage of scalar data cache accesses that hit in cache. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
-    rst: Percentage of scalar data cache accesses that hit in cache. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
+    plain: Percentage of sL1D requests that hit on a previously loaded line in the cache. Calculated as the number of sL1D hits over the number of hits and misses, excluding duplicate misses. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
+    rst: Percentage of sL1D requests that hit on a previously loaded line in the cache. Calculated as the number of sL1D hits over the number of hits and misses, excluding duplicate misses. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
     unit: Percent
   Scalar Data Cache BW:
-    plain: Bandwidth of scalar data cache requests to the GL1 cache. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
-    rst: Bandwidth of scalar data cache requests to the GL1 cache. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
+    plain: The number of bytes the scalar data cache (sL1D) reads from the GL1 cache, divided by total duration. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
+    rst: The number of bytes the scalar data cache (sL1D) reads from the GL1 cache, divided by total duration. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
     unit: GB/s
   Instruction Cache Hit Rate:
-    plain: Percentage of instruction fetch requests that hit in the instruction cache. High hit rates are essential for sustained instruction throughput. Low hit rates may indicate large kernel code size or divergent control flow.
-    rst: Percentage of instruction fetch requests that hit in the instruction cache. High hit rates are essential for sustained instruction throughput. Low hit rates may indicate large kernel code size or divergent control flow.
+    plain: Percentage of L1I requests that hit on a previously loaded line in the cache. Calculated as the number of L1I hits over the number of hits and misses, excluding duplicate misses.
+    rst: Percentage of L1I requests that hit on a previously loaded line in the cache. Calculated as the number of L1I hits over the number of hits and misses, excluding duplicate misses.
     unit: Percent
   Instruction Cache BW:
-    plain: Bandwidth of instruction cache requests to the GL1 cache. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
-    rst: Bandwidth of instruction cache requests to the GL1 cache. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
+    plain: The number of bytes the instruction cache (L1I) requests from the GL1 cache, divided by total duration. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
+    rst: The number of bytes the instruction cache (L1I) requests from the GL1 cache, divided by total duration. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
     unit: GB/s
 Memory chart - Instruction Cache:
   ICache Requests:
@@ -81,12 +81,12 @@ Memory chart - Instruction Cache:
     rst: ''
     unit: Requests per Normalization Unit
   ICache Hit Rate:
-    plain: Percentage of instruction fetch requests that hit in the instruction cache. High hit rates are essential for sustained instruction throughput. Low hit rates may indicate large kernel code size or divergent control flow.
-    rst: Percentage of instruction fetch requests that hit in the instruction cache. High hit rates are essential for sustained instruction throughput. Low hit rates may indicate large kernel code size or divergent control flow.
+    plain: Percentage of L1I requests that hit on a previously loaded line in the cache. Calculated as the number of L1I hits over the number of hits and misses, excluding duplicate misses.
+    rst: Percentage of L1I requests that hit on a previously loaded line in the cache. Calculated as the number of L1I hits over the number of hits and misses, excluding duplicate misses.
     unit: Percent
   ICache-GL1 Read Bandwidth:
-    plain: Bandwidth of instruction cache requests to the GL1 cache. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
-    rst: Bandwidth of instruction cache requests to the GL1 cache. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
+    plain: The number of bytes the instruction cache (L1I) requests from the GL1 cache, divided by total duration. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
+    rst: The number of bytes the instruction cache (L1I) requests from the GL1 cache, divided by total duration. High values may indicate instruction cache pressure from large kernels or frequent instruction cache misses.
     unit: GB/s
 Memory chart - Scalar Data Cache:
   DCache Requests:
@@ -94,12 +94,12 @@ Memory chart - Scalar Data Cache:
     rst: ''
     unit: Requests per Normalization Unit
   DCache Hit Rate:
-    plain: Percentage of scalar data cache accesses that hit in cache. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
-    rst: Percentage of scalar data cache accesses that hit in cache. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
+    plain: Percentage of sL1D requests that hit on a previously loaded line in the cache. Calculated as the number of sL1D hits over the number of hits and misses, excluding duplicate misses. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
+    rst: Percentage of sL1D requests that hit on a previously loaded line in the cache. Calculated as the number of sL1D hits over the number of hits and misses, excluding duplicate misses. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
     unit: Percent
   DCache-GL1 Read Bandwidth:
-    plain: Bandwidth of scalar data cache requests to the GL1 cache. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
-    rst: Bandwidth of scalar data cache requests to the GL1 cache. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
+    plain: The number of bytes the scalar data cache (sL1D) reads from the GL1 cache, divided by total duration. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
+    rst: The number of bytes the scalar data cache (sL1D) reads from the GL1 cache, divided by total duration. Scalar operations load uniform data shared across all threads in a wavefront, making efficient caching critical for performance.
     unit: GB/s
 Memory chart - TCP Cache (GL0 Vector Cache):
   TCP Read Requests:
@@ -115,8 +115,8 @@ Memory chart - TCP Cache (GL0 Vector Cache):
     rst: Percentage of GL0 vector cache (TCP Cache) requests that hit in cache. The TCP cache is the first-level cache for vector memory operations. High hit rates reduce traffic to the GL1 cache and improve memory access latency.
     unit: Percent
   GL0 Cache BW (TCP Cache):
-    plain: Bandwidth of requests to the GL0 vector cache (TCP Cache). This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
-    rst: Bandwidth of requests to the GL0 vector cache (TCP Cache). This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
+    plain: The number of bytes requested from the GL0 vector cache (TCP Cache), divided by total duration. This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
+    rst: The number of bytes requested from the GL0 vector cache (TCP Cache), divided by total duration. This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
     unit: GB/s
 Memory chart - LDS (Local Data Share):
   LDS Req:
@@ -132,8 +132,8 @@ Memory chart - LDS (Local Data Share):
     rst: Percentage of LDS accesses that experienced bank conflicts. Conflicts occur when multiple work-items in a wavefront access different addresses in the same LDS bank. High conflict rates reduce effective LDS bandwidth. Restructuring data layouts can help.
     unit: Percent
   LDS Estimated Bandwidth:
-    plain: Estimated achieved bandwidth for Local Data Share operations. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
-    rst: Estimated achieved bandwidth for Local Data Share operations. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
+    plain: Estimated number of bytes transferred by Local Data Share operations, divided by total duration. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
+    rst: Estimated number of bytes transferred by Local Data Share operations, divided by total duration. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
     unit: GB/s
 Memory chart - TCP-GL1 Interface:
   TCP-GL1 Read Bandwidth:
@@ -159,8 +159,8 @@ Memory chart - GL1 Cache (L1):
     unit: Percent
 Memory chart - GL1-GL2 Interface:
   GL1-GL2 Read Bandwidth:
-    plain: Read bandwidth between L1 (GL1C) and L2 (GL2C) caches. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
-    rst: Read bandwidth between L1 (GL1C) and L2 (GL2C) caches. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
+    plain: The number of bytes L1 (GL1C) reads from L2 (GL2C), divided by total duration. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
+    rst: The number of bytes L1 (GL1C) reads from L2 (GL2C), divided by total duration. This represents cache miss traffic from L1 that must be serviced by L2. Lower values indicate better L1 cache efficiency.
     unit: GB/s
   GL1-GL2 Write Bandwidth:
     plain: ''
@@ -176,12 +176,12 @@ Memory chart - GL2 Cache (L2):
     rst: Percentage of GL2 cache requests that are serviced from cache without accessing system memory. Higher hit rates reduce memory bandwidth pressure and improve performance. Low hit rates may indicate poor data locality or working sets that exceed cache capacity.
     unit: Percent
   GL2-Fabric Read BW:
-    plain: Read bandwidth between the GL2 cache and the memory fabric/system memory. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
-    rst: Read bandwidth between the GL2 cache and the memory fabric/system memory. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
+    plain: The number of bytes the GL2 cache reads from the memory fabric or system memory, divided by total duration. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Its peak requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
+    rst: The number of bytes the GL2 cache reads from the memory fabric or system memory, divided by total duration. High bandwidth utilization indicates memory-intensive read patterns. This metric helps identify when memory bandwidth is a performance bottleneck. Its peak requires $max_mclk populated in sysinfo (max MEM clock from amd-smi).
     unit: GB/s
   GL2-Fabric Write BW:
-    plain: Write bandwidth between the GL2 cache and the memory fabric/system memory. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
-    rst: Write bandwidth between the GL2 cache and the memory fabric/system memory. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
+    plain: The number of bytes the GL2 cache writes to the memory fabric or system memory, divided by total duration. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
+    rst: The number of bytes the GL2 cache writes to the memory fabric or system memory, divided by total duration. High values indicate write-intensive workloads. Combined with read bandwidth, this shows total memory traffic leaving the GPU caches.
     unit: GB/s
 Memory chart - GCEA to System Memory:
   SysArb Utilization:
@@ -193,12 +193,12 @@ Memory chart - GCEA to System Memory:
     rst: ''
     unit: Percent
   DRAM Read Bandwidth:
-    plain: Achieved read bandwidth to system memory. RDNA 3.5 APUs use DDR5/LPDDR5 system memory. High read bandwidth indicates memory-intensive read patterns. This is a key metric for identifying memory-bound workloads.
-    rst: Achieved read bandwidth to system memory. RDNA 3.5 APUs use DDR5/LPDDR5 system memory. High read bandwidth indicates memory-intensive read patterns. This is a key metric for identifying memory-bound workloads.
+    plain: The number of bytes read from system memory, divided by total duration. RDNA 3.5 APUs use DDR5/LPDDR5 system memory. High read bandwidth indicates memory-intensive read patterns. This is a key metric for identifying memory-bound workloads.
+    rst: The number of bytes read from system memory, divided by total duration. RDNA 3.5 APUs use DDR5/LPDDR5 system memory. High read bandwidth indicates memory-intensive read patterns. This is a key metric for identifying memory-bound workloads.
     unit: GB/s
   DRAM Write Bandwidth:
-    plain: Achieved write bandwidth to system memory. High write bandwidth indicates write-intensive workloads. Combined with read bandwidth, this shows total memory traffic between the GPU and system memory.
-    rst: Achieved write bandwidth to system memory. High write bandwidth indicates write-intensive workloads. Combined with read bandwidth, this shows total memory traffic between the GPU and system memory.
+    plain: The number of bytes written to system memory, divided by total duration. High write bandwidth indicates write-intensive workloads. Combined with read bandwidth, this shows total memory traffic between the GPU and system memory.
+    rst: The number of bytes written to system memory, divided by total duration. High write bandwidth indicates write-intensive workloads. Combined with read bandwidth, this shows total memory traffic between the GPU and system memory.
     unit: GB/s
   DRAM Read Requests:
     plain: DRAM read requests per client group from the GCEA memory path (GCEA_RDRAM_REQ_PER_CLIGRP_sum / $denom).
@@ -218,16 +218,16 @@ Memory chart - GCEA to System Memory:
     unit: Count per Normalization Unit
 Memory chart - Workgroup Processors (WGPs):
   Wavefront Occupancy:
-    plain: Resident wavefronts per WGP, averaged over GPU-active cycles, as a percent of the maximum wavefronts per WGP.
+    plain: Percentage of the maximum wavefronts per WGP that are resident, averaged over GPU-active cycles.
     rst: Resident :ref:`wavefronts <desc-wavefront>` per WGP, averaged over GPU-active cycles, as a percent of the maximum wavefronts per WGP.
     unit: Percent
   VGPR:
-    plain: 'The number of architected vector general-purpose registers allocated for the kernel. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
-    rst: 'The number of architected vector general-purpose registers allocated for the kernel. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
+    plain: 'The number of architected vector general-purpose registers allocated per wavefront. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
+    rst: 'The number of architected vector general-purpose registers allocated per wavefront. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
     unit: Registers
   SGPR:
-    plain: 'The number of scalar general-purpose registers allocated for the kernel. Note: this may not exactly match the number of SGPRs requested by the compiler due to allocation granularity.'
-    rst: 'The number of scalar general-purpose registers allocated for the kernel. Note: this may not exactly match the number of SGPRs requested by the compiler due to allocation granularity.'
+    plain: The number of scalar general-purpose registers allocated per wavefront. On this architecture every wavefront gets 128.
+    rst: The number of scalar general-purpose registers allocated per wavefront. On this architecture every wavefront gets 128.
     unit: Registers
   LDS Allocation:
     plain: 'The number of bytes of LDS memory (or, shared memory) allocated per workgroup. Note: This may also be larger than what was requested at compile time due to both allocation granularity and dynamic per-dispatch LDS allocations.'
@@ -251,20 +251,20 @@ Roofline Performance Rates:
     rst: 64-bit floating-point operations per second on the VALU. Peak is 4 FLOPs/CU/cycle (FP32 FMA rate / 32). Uses dedicated FP64 instruction counter (SQ_INSTS_VALU_DP_sum). FP64 is 1/32 rate of FP32 on RDNA.
     unit: GFLOP/s
   GL2 Cache BW:
-    plain: Achieved bandwidth between the GL1 and GL2 caches. This represents GL1 miss traffic that must be serviced by GL2. High bandwidth relative to peak may indicate GL1 cache pressure or poor data locality at the GL1 level.
-    rst: Achieved bandwidth between the GL1 and GL2 caches. This represents GL1 miss traffic that must be serviced by GL2. High bandwidth relative to peak may indicate GL1 cache pressure or poor data locality at the GL1 level.
+    plain: The number of bytes transferred between the GL1 and GL2 caches, divided by total duration. This represents GL1 miss traffic that must be serviced by GL2. High bandwidth relative to peak may indicate GL1 cache pressure or poor data locality at the GL1 level.
+    rst: The number of bytes transferred between the GL1 and GL2 caches, divided by total duration. This represents GL1 miss traffic that must be serviced by GL2. High bandwidth relative to peak may indicate GL1 cache pressure or poor data locality at the GL1 level.
     unit: GB/s
   GL1 Cache BW:
-    plain: Achieved bandwidth between the GL0 (TCP Cache) and GL1 caches. This represents GL0 miss traffic. High bandwidth relative to peak may indicate cache pressure at the GL0 level or memory access patterns with poor locality.
-    rst: Achieved bandwidth between the GL0 (TCP Cache) and GL1 caches. This represents GL0 miss traffic. High bandwidth relative to peak may indicate cache pressure at the GL0 level or memory access patterns with poor locality.
+    plain: The number of bytes transferred between the GL0 (TCP Cache) and GL1 caches, divided by total duration. This represents GL0 miss traffic. High bandwidth relative to peak may indicate cache pressure at the GL0 level or memory access patterns with poor locality.
+    rst: The number of bytes transferred between the GL0 (TCP Cache) and GL1 caches, divided by total duration. This represents GL0 miss traffic. High bandwidth relative to peak may indicate cache pressure at the GL0 level or memory access patterns with poor locality.
     unit: GB/s
   GL0 Cache BW (TCP Cache):
-    plain: Bandwidth of requests to the GL0 vector cache (TCP Cache). This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
-    rst: Bandwidth of requests to the GL0 vector cache (TCP Cache). This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
+    plain: The number of bytes requested from the GL0 vector cache (TCP Cache), divided by total duration. This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
+    rst: The number of bytes requested from the GL0 vector cache (TCP Cache), divided by total duration. This represents the rate at which the shader cores are requesting data from the cache hierarchy. High bandwidth indicates memory-intensive workloads.
     unit: GB/s
   LDS BW:
-    plain: Estimated achieved bandwidth for Local Data Share operations. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
-    rst: Estimated achieved bandwidth for Local Data Share operations. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
+    plain: Estimated number of bytes transferred by Local Data Share operations, divided by total duration. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
+    rst: Estimated number of bytes transferred by Local Data Share operations, divided by total duration. This reflects the effective throughput after accounting for bank conflicts. RDNA 3.5 provides 32 LDS banks per compute unit for high-bandwidth shared memory access.
     unit: GB/s
 Roofline Plot Points:
   AI L2:
@@ -367,8 +367,8 @@ SPI Utilization:
     unit: Percent
 Wave Dispatch Statistics:
   Compute Wave Dispatches:
-    plain: Total number of compute wavefronts dispatched by the Shader Processor Input. This represents the work scheduled for execution on the shader engines. Compare with completed waves to identify dispatch-related bottlenecks.
-    rst: Total number of compute wavefronts dispatched by the Shader Processor Input. This represents the work scheduled for execution on the shader engines. Compare with completed waves to identify dispatch-related bottlenecks.
+    plain: Total number of compute wavefronts dispatched by the Shader Processor Input. This represents the work scheduled for execution on the shader engines. Compare with completed wavefronts to identify dispatch-related bottlenecks.
+    rst: Total number of compute wavefronts dispatched by the Shader Processor Input. This represents the work scheduled for execution on the shader engines. Compare with completed wavefronts to identify dispatch-related bottlenecks.
     unit: Count per Normalization Unit
   Wave Dispatch Rate:
     plain: Average wavefronts dispatched per GPU active cycle. Values greater than one indicate parallel dispatch across multiple shader engines. Low dispatch rates may indicate workload submission bottlenecks or insufficient parallelism in the application.
@@ -384,12 +384,12 @@ Wavefront Launch Stats:
     rst: ''
     unit: Work-items
   VGPRs:
-    plain: 'The number of architected vector general-purpose registers allocated for the kernel. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
-    rst: 'The number of architected vector general-purpose registers allocated for the kernel. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
+    plain: 'The number of architected vector general-purpose registers allocated per wavefront. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
+    rst: 'The number of architected vector general-purpose registers allocated per wavefront. Note: this may not exactly match the number of VGPRs requested by the compiler due to allocation granularity.'
     unit: Registers
   SGPRs:
-    plain: 'The number of scalar general-purpose registers allocated for the kernel. Note: this may not exactly match the number of SGPRs requested by the compiler due to allocation granularity.'
-    rst: 'The number of scalar general-purpose registers allocated for the kernel. Note: this may not exactly match the number of SGPRs requested by the compiler due to allocation granularity.'
+    plain: The number of scalar general-purpose registers allocated per wavefront. On this architecture every wavefront gets 128.
+    rst: The number of scalar general-purpose registers allocated per wavefront. On this architecture every wavefront gets 128.
     unit: Registers
   LDS Allocation:
     plain: 'The number of bytes of LDS memory (or, shared memory) allocated per workgroup. Note: This may also be larger than what was requested at compile time due to both allocation granularity and dynamic per-dispatch LDS allocations.'
@@ -410,8 +410,8 @@ Wave Dispatch:
     unit: Threads
 Wave Life:
   Wave Life:
-    plain: Average number of cycles from wavefront creation to completion. Longer wave life indicates more execution time per wavefront, which may be due to complex kernels, memory latency, or synchronization waits.
-    rst: Average number of cycles from wavefront creation to completion. Longer wave life indicates more execution time per wavefront, which may be due to complex kernels, memory latency, or synchronization waits.
+    plain: Average number of cycles from wavefront creation to completion. Longer wavefront life indicates more execution time per wavefront, which may be due to complex kernels, memory latency, or synchronization waits.
+    rst: Average number of cycles from wavefront creation to completion. Longer wavefront life indicates more execution time per wavefront, which may be due to complex kernels, memory latency, or synchronization waits.
     unit: Cycles
 Wave Instruction Mix:
   Total Instructions:
@@ -503,13 +503,13 @@ Wait State Analysis:
     unit: Percent
 WGP Instruction Cache:
   Icache Hit Rate:
-    plain: Percentage of instruction fetch requests that hit in the instruction cache. High hit rates are essential for sustained instruction throughput. Low hit rates may indicate large kernel code size or divergent control flow.
-    rst: Percentage of instruction fetch requests that hit in the instruction cache. High hit rates are essential for sustained instruction throughput. Low hit rates may indicate large kernel code size or divergent control flow.
+    plain: Percentage of L1I requests that hit on a previously loaded line in the cache. Calculated as the number of L1I hits over the number of hits and misses, excluding duplicate misses.
+    rst: Percentage of L1I requests that hit on a previously loaded line in the cache. Calculated as the number of L1I hits over the number of hits and misses, excluding duplicate misses.
     unit: Percent
 WGP Scalar Data Cache:
   DCache Hit Rate:
-    plain: Percentage of scalar data cache accesses that hit in cache. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
-    rst: Percentage of scalar data cache accesses that hit in cache. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
+    plain: Percentage of sL1D requests that hit on a previously loaded line in the cache. Calculated as the number of sL1D hits over the number of hits and misses, excluding duplicate misses. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
+    rst: Percentage of sL1D requests that hit on a previously loaded line in the cache. Calculated as the number of sL1D hits over the number of hits and misses, excluding duplicate misses. The scalar cache stores uniform data accessed by scalar instructions. High hit rates indicate efficient reuse of constant and uniform data across wavefronts.
     unit: Percent
 GL0 Utilization:
   GL0 Busy (TCP):
@@ -657,12 +657,12 @@ GL2 Cache Request Statistics:
     unit: Count per Normalization Unit
 GL2 Cache Bandwidth:
   GL2 Cache Read BW:
-    plain: Bandwidth of read operations at the L2 cache level. This metric shows overall L2 cache utilization and helps identify memory subsystem bottlenecks.
-    rst: Bandwidth of read operations at the L2 cache level. This metric shows overall L2 cache utilization and helps identify memory subsystem bottlenecks.
+    plain: The number of bytes read from the L2 cache, divided by total duration. It shows L2 cache read traffic and helps identify memory subsystem bottlenecks.
+    rst: The number of bytes read from the L2 cache, divided by total duration. It shows L2 cache read traffic and helps identify memory subsystem bottlenecks.
     unit: GB/s
   GL2 Cache Write BW:
-    plain: Achieved write bandwidth at the GL2 cache level. This represents total write traffic from GL1 caches to GL2. High bandwidth indicates memory-intensive write patterns.
-    rst: Achieved write bandwidth at the GL2 cache level. This represents total write traffic from GL1 caches to GL2. High bandwidth indicates memory-intensive write patterns.
+    plain: The number of bytes written to the GL2 cache, divided by total duration. This represents total write traffic from GL1 caches to GL2. High bandwidth indicates memory-intensive write patterns.
+    rst: The number of bytes written to the GL2 cache, divided by total duration. This represents total write traffic from GL1 caches to GL2. High bandwidth indicates memory-intensive write patterns.
     unit: GB/s
 DRAM Read Interface:
   DRAM Read Requests:
@@ -678,8 +678,8 @@ DRAM Read Interface:
     rst: Number of system memory banks with pending read requests. More active banks enable better memory-level parallelism. Low bank utilization may indicate suboptimal access patterns limiting bandwidth.
     unit: Count per Normalization Unit
   DRAM Read Size (32B increments):
-    plain: Total volume of read data transferred from system memory. This metric helps quantify memory read bandwidth consumption. Compare with theoretical bandwidth to assess memory utilization.
-    rst: Total volume of read data transferred from system memory. This metric helps quantify memory read bandwidth consumption. Compare with theoretical bandwidth to assess memory utilization.
+    plain: Total volume of read data transferred from system memory, in 32-byte increments. This metric helps quantify memory read bandwidth consumption. Compare with theoretical bandwidth to assess memory utilization.
+    rst: Total volume of read data transferred from system memory, in 32-byte increments. This metric helps quantify memory read bandwidth consumption. Compare with theoretical bandwidth to assess memory utilization.
     unit: Count per Normalization Unit
 DRAM Write Interface:
   DRAM Write Requests:
@@ -695,8 +695,8 @@ DRAM Write Interface:
     rst: Number of system memory banks with pending write requests. Higher bank utilization enables better write bandwidth. Low values may indicate access pattern issues.
     unit: Count per Normalization Unit
   DRAM Write Size (32B increments):
-    plain: Total volume of write data transferred to system memory. This quantifies memory write bandwidth consumption. High values indicate write-intensive workloads.
-    rst: Total volume of write data transferred to system memory. This quantifies memory write bandwidth consumption. High values indicate write-intensive workloads.
+    plain: Total volume of write data transferred to system memory, in 32-byte increments. This quantifies memory write bandwidth consumption. High values indicate write-intensive workloads.
+    rst: Total volume of write data transferred to system memory, in 32-byte increments. This quantifies memory write bandwidth consumption. High values indicate write-intensive workloads.
     unit: Count per Normalization Unit
 System Arbiter (SARB):
   SARB Busy:
