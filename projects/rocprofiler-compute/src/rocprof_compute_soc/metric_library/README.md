@@ -148,6 +148,5 @@ duplicate keys.
 
 While production reads `analysis_configs/`,
 `tests/unit/rocprof_compute_soc/metric_library/test_metric_library_sync.py` checks that
-the library matches `analysis_configs/` and `profile_configs/sets/`: every equation of a
-panel row is a library formula, and the units, peaks, counters, collectables and
-sets match. CI runs it.
+the library matches `analysis_configs/`: every equation of a panel row is a library
+formula, and the units, peaks, counters and collectables match. CI runs it.
