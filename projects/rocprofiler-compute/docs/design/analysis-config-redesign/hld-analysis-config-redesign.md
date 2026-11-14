@@ -411,12 +411,9 @@ Each view declares which metrics to show and how to render them. The metric defi
 ```yaml
 # views/gfx950/0400_roofline.yaml
 view: Roofline
-legacy_panel_id: 400
 alias: roof
 tables:
-- id: 401
-  title: Roofline Performance Rates
-  cli_style: Roofline
+- title: Roofline Performance Rates
   header: {metric: Metric, value: Value, unit: Unit, peak: Peak (Empirical)}
   metrics:
   - metric: fabric.hbm_bw
@@ -426,12 +423,9 @@ tables:
 
 # views/gfx942/0300_memory_chart.yaml
 view: Memory Chart
-legacy_panel_id: 300
 alias: memchart
 tables:
-- id: 301
-  title: Memory Chart
-  cli_style: mem_chart
+- title: Memory Chart
   header: {metric: Metric, value: Value, unit: Unit}
   metrics:
   - metric: l2.hit_rate              # Case A: same id, formula resolved per arch

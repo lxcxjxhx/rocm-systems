@@ -71,8 +71,8 @@ So a new ceiling, or a new arch, fails validation until a metric claims each cei
 An arch without a benchmark (gfx908) has no measured peaks; the first `peak_empirical`
 of a CDNA metric is in the gfx90a override files.
 
-A metric's numeric positional ID (`legacy_id`) is not a metric field either; see
-[Transition mechanism](lld-index.md#transition-mechanism-legacy_id).
+A metric's numeric positional ID is not a metric field either; it is the row's position
+in a view (see [Transition mechanism](lld-index.md#transition-mechanism-positional-ids)).
 
 A metric concept has one `id` on every architecture. Each family base (gfx908 for CDNA,
 gfx115x for RDNA, and gfx1250) defines the id with that family's formula, as the HLD's

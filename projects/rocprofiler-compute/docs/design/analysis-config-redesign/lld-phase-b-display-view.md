@@ -16,14 +16,18 @@ View fields:
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `view` | str | yes | View title, e.g. `"Compute Units - Compute Pipeline"` |
-| `legacy_panel_id` | int | yes | Numeric panel ID for transition |
 | `alias` | str | no | The panel's `-b` alias, e.g. `cu_pipe` |
 | `tables` | list | yes | The panel's tables, in order |
 
-Table fields: `id`, `title`, `header` (ordered column names), and optionally `render`
-(`metric_table` by default, `raw_csv_table`, `pc_sampling_table`), `cli_style`
-(`simple_box`, `simple_bar`, `simple_multiple_bar`, `mem_chart`, `Roofline`),
-`placeholder_range`, `source`, `columnwise`, and `metrics` (the rows of a metric table).
+The panel ID comes from the file name (`1100_compute_units_compute_pipeline.yaml` is
+panel 1100). The top stats and system info panels are built-in views defined in
+`analysis_views.py`, not files.
+
+Table fields: `title`, `header` (ordered column names), and optionally `render`
+(`metric_table` by default, `raw_csv_table`, `pc_sampling_table`), `placeholder_range`,
+`source`, `columnwise`, and `metrics` (the rows of a metric table). A table has no ID or
+CLI style field: its ID is its position in the panel, and the CLI derives its style from
+its header and panel.
 
 Row fields:
 
@@ -36,11 +40,10 @@ Row fields:
 | `peak` | `empirical` | no | Show the metric's `peak_empirical` instead of its `peak` |
 | `pct_of_peak` | bool | no | `false` to show no percent of peak |
 | `values` | dict[str, str] | no | Literal values of typed columns such as `xfer` and `coherency` |
-| `legacy_id` | str | no | The row's numeric id in the panel file; one row per metric has it |
 
 ### Validation
 
-Schema checks: known fields at each level, render types and CLI styles, one of `metric`
+Schema checks: the file name, known fields at each level, render types, one of `metric`
 and `metrics` per row. Every referenced metric id exists in the arch's `MetricLibrary`,
 and a row asking for the measured peak has one.
 
@@ -51,8 +54,8 @@ and a row asking for the measured peak has one.
 `gfx115x` for gfx1151) in file name order. `views_to_panel_configs(views, metrics)`
 translates them into the `OrderedDict[int, dict]` that `build_dfs()` consumes:
 
-- Panel and table IDs from `legacy_panel_id` and each table's `id`; a row's numeric id
-  is its position.
+- Panel IDs from the file names, table IDs from the table's position in the panel, and a
+  row's numeric id from its position in the table.
 - Row name: the `label`, else the metric's `name`.
 - Main column: the metric's `formula`, wrapped in `ROUND()` when the row asks; `min`,
   `max` and `std dev`: `MIN`/`MAX`/`STD` of the formula per kernel (each `SUM(x)` and
@@ -67,8 +70,7 @@ translates them into the `OrderedDict[int, dict]` that `build_dfs()` consumes:
 ```
 src/rocprof_compute_soc/views/
   gfx908/  gfx90a/  gfx942/  gfx950/  gfx115x/  gfx1250/
-    0000_top_stats.yaml
-    0100_system_info.yaml
+    0200_system_speed_of_light.yaml
     ...                       # one file per panel file of the arch
 ```
 
@@ -103,11 +105,9 @@ more purposeful views -- not a 1:1 carry-forward of legacy structure.
 ```yaml
 # views/gfx942/1100_compute_units_compute_pipeline.yaml
 view: Compute Units - Compute Pipeline
-legacy_panel_id: 1100
 alias: cu_pipe
 tables:
-- id: 1101
-  title: Compute Speed-of-Light
+- title: Compute Speed-of-Light
   header:
     metric: Metric
     value: Avg
@@ -118,8 +118,7 @@ tables:
   - metric: compute.valu_flops
   - metric: compute.mfma_flops_f8
   - metric: compute.mfma_flops_bf16
-- id: 1102
-  title: Pipeline Statistics
+- title: Pipeline Statistics
   header:
     metric: Metric
     avg: Avg
@@ -129,7 +128,6 @@ tables:
   metrics:
   - metric: compute.ipc
   - metric: compute.ipc_issued
-    legacy_id: 11.2.1
 ```
 
 View files contain no formulas, units, peaks, or descriptions -- those live in Layer 2.
@@ -143,13 +141,12 @@ name differs from the metric's name, and keeps the display fields above.
 
 ### Validation
 
-`tools/validate_views.py` (pre-commit) checks the view files: their fields, render types
-and CLI styles, and that every metric they show is in the arch's metric library.
+`tools/validate_views.py` (pre-commit) checks the view files: their names, fields and render
+types, and that every metric they show is in the arch's metric library.
 `test_analysis_views_sync.py`, next to the metric library sync test, checks every arch's
 views against the panel files until they are removed: the same panels, tables, headers
 and table settings in order, the same rows in order apart from rows that show no
-equation, the `-b` aliases of the config templates, and one `legacy_id` per metric,
-its row's numeric id in the panel file. It skips the panels the metric library sync test skips (the roofline panel of
+equation, and the `-b` aliases of the config templates. It skips the panels the metric library sync test skips (the roofline panel of
 an arch without a roofline benchmark, gfx908).
 
 
@@ -202,8 +199,6 @@ WARNING: Numeric metric ID '11.2.3' is deprecated.
 
 `convert_metric_id_to_panel_info()` remains during the deprecation window for
 backward compatibility.
-
-**`legacy_panel_id`** -- removed from all Layer 3 view files.
 
 ### Tooling cleanup
 

@@ -136,42 +136,27 @@ the panel YAMLs' expressions. The counter set reaches the same `perfmon_coalesce
 path.
 
 
-## Transition mechanism: legacy_id
+## Transition mechanism: positional ids
 
 The current pipeline -- `build_dfs()`, the `-b` filter, profiling sets -- is built
 around numeric positional IDs (e.g., `11.2.3` = panel 1100, table 1102, metric index
 3). The new design replaces these with stable string IDs (`compute.salu_util`). During
 the transition, both systems must coexist.
 
-`legacy_id` is the numeric positional ID from the current system. It is not a metric
-field, because one metric appears in several tables at a different position in each. In
-Phase A it stays what it is today, a position in the analysis configs, and the metric
-library does not link rows to metric ids: the analysis configs remain the display source
-until the Phase B views. A view row stores the `legacy_id` together with the metric id:
+The views store no numeric IDs. Each one is computed at run time from the view's
+position: the panel ID from the view file name (`1100_compute_units_compute_pipeline.yaml`
+is panel 1100), a table's ID from its position in the view (1102 is the second table),
+and a row's ID from its position in the table (`11.2.2` is the third row). The
+built-in views (top stats, system info) have fixed panel IDs.
 
-```yaml
-# view row, table 1102: the third row is 11.2.2
-- metric: compute.salu_util      # new stable string ID
-  legacy_id: "11.2.2"            # old positional ID, transition only
-```
+`views_to_panel_configs()` uses these IDs to build the numeric `OrderedDict[int, dict]`
+that `build_dfs()` expects, and analyze `-b`, `profile -b`, `--list-metrics`, the
+database `metric_id` and the memory chart layouts all read the same run-time positions,
+so profile and analyze agree by construction. A numeric ID typed in `-b` means the ID
+analyze shows, and prints a deprecation warning naming the string ID.
 
-Similarly, `legacy_panel_id` on Layer 3 views carries the old numeric panel ID:
-
-```yaml
-view: "Compute Units - Compute Pipeline"
-legacy_panel_id: 1100            # old panel ID, transition only
-```
-
-The views store `legacy_id` instead of using row positions because one view serves
-several archs and skips refs by `archs`, so a row's position is not the same on every
-arch.
-
-The Phase B adapter (`views_to_panel_configs()`) uses these fields to reconstruct the
-numeric `OrderedDict[int, dict]` that `build_dfs()` expects, and the `-b` filter resolves
-numeric IDs through them.
-
-`legacy_id` and `legacy_panel_id` are removed after Stage 8, when string IDs are the
-primary format. They are transition artifacts, not part of the target design.
+A numeric ID changes when a view moves its row; string IDs do not. Numeric IDs are
+removed in a later release, so no positions lock keeps them stable.
 
 
 ## Stage dependencies and parallelism
