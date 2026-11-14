@@ -7,9 +7,45 @@ Full documentation for ROCm Compute Profiler is available at [https://rocm.docs.
 
 ### Added
 
+* Added metric IDs to `--block` and `--list-metrics`, for example `--block compute.salu_util`, which selects every row that shows the metric. Numeric metric IDs such as `11.2.2` still work, but print a deprecation warning.
+
 ### Changed
 
+* With one workload, analyze shows each bandwidth in TB/s, GB/s, MB/s, KB/s, or B/s, depending on its value, for example `1.94 TB/s` instead of `1941.81 GB/s`.
+
+* Analyze no longer shows rows that have no value.
+
+* The gfx1250 roofline `WMMA FLOPs (FP64)` row shows its theoretical peak.
+
+* `-b membw_analysis` fails on gfx908, gfx90a, and gfx942, which have no Memory Bandwidth Analysis block.
+
+* `--set` selects metric IDs, which `--list-sets` lists, for example `compute.salu_util` instead of `11.2.2`, and analyze then shows only the set's metrics.
+
+* The System Speed-of-Light block (`-b 2`, `-b sol`) shows three tables: GPU Speed-of-Light, Compute Throughput, and Memory Throughput. Its metric IDs change, for example SALU Utilization is `2.2.7` on gfx942.
+
+* A numeric metric ID selects the row at that position in the current output, so an ID from an earlier version can select a different row, for example `-b 2.1.0` on gfx942 now selects Theoretical LDS Bandwidth instead of VALU FLOPs.
+
+* Some table IDs change, for example gfx942 `18.12` is now `18.10`, and tables in blocks 7 and 14 on gfx115x and block 13 on gfx1250.
+
+* The Instruction Mix and TA/TD blocks on AMD Instinct MI100, MI200, MI300, and MI350 Series say Buffer instead of Spill/Stack, for example `Buffer Read`, since these rows count all buffer instructions.
+
+* On gfx1250, the memory chart table shows the full metric names, for example `LDS Load Instructions` instead of `LDS Load Requests`.
+
+* The L2-Fabric rows on AMD Instinct MI100 and MI200 Series that count bytes say Bytes instead of BW, for example `Write and Atomic Bytes`.
+
+* More rows show their full metric names, for example `vL1D Access Latency Cycles` instead of `L1 Access Latency` on AMD Instinct MI350 Series, and `L1-L2 Bandwidth` instead of `L1-L2 BW` on MI300 and MI350 Series.
+
 ### Removed
+
+* Removed the gfx908 `compute_thruput_flops` set, whose metrics MI100 has no counters for.
+
+* The System Speed-of-Light block no longer shows Wavefront Occupancy, the L2-Fabric latencies, and some other rows; their own blocks still show them, for example Wavefront Occupancy as `7.2.7` on gfx942.
+
+* On gfx115x, Wave Issue Wait is no longer shown, and on gfx1250, the GL2-to-DRAM latencies, the instruction fetch latency, and LDS bank conflicts per access.
+
+* Removed the PC Sampling block (`-b 21`, `-b pc_sampling`) on gfx908, which doesn't support PC sampling.
+
+* Removed the duplicate Async Direct Load Instruction and Async Direct Store Instruction rows from the TXA block on gfx1250.
 
 ### Optimized
 
@@ -17,7 +53,11 @@ Full documentation for ROCm Compute Profiler is available at [https://rocm.docs.
 
 ### Resolved issues
 
+* Fixed the gfx1250 roofline missing its L0 and L2 points.
+
 ### Upcoming changes
+
+* Numeric metric IDs in `--block`, such as `11.2.2`, will be removed in a future release. Use metric IDs such as `compute.salu_util` instead.
 
 ### Known issues
 
