@@ -21,11 +21,11 @@ Full documentation for ROCm Compute Profiler is available at [https://rocm.docs.
 
 * `--set` selects metric IDs, which `--list-sets` lists, for example `compute.salu_util` instead of `11.2.2`, and analyze then shows only the set's metrics.
 
-* The System Speed-of-Light block (`-b 2`, `-b sol`) shows three tables: GPU Speed-of-Light, Compute Throughput, and Memory Throughput. Its metric IDs change, for example SALU Utilization is `2.2.7` on gfx942.
+* The System Speed-of-Light block (`-b 2`, `-b sol`) shows three tables on every architecture, including gfx1201: GPU Speed-of-Light, Compute Throughput, and Memory Throughput. Its metric IDs change, for example SALU Utilization is `2.2.7` on gfx942.
 
 * A numeric metric ID selects the row at that position in the current output, so an ID from an earlier version can select a different row, for example `-b 2.1.0` on gfx942 now selects Theoretical LDS Bandwidth instead of VALU FLOPs.
 
-* Some table IDs change, for example gfx942 `18.12` is now `18.10`, and tables in blocks 7 and 14 on gfx115x and block 13 on gfx1250.
+* Some table IDs change, for example gfx942 `18.12` is now `18.10`, and tables in blocks 7 and 14 on gfx115x, block 13 on gfx1250, and blocks 3, 6, 7, 9, 11, and 13 on gfx1201.
 
 * The Instruction Mix and TA/TD blocks on AMD Instinct MI100, MI200, MI300, and MI350 Series say Buffer instead of Spill/Stack, for example `Buffer Read`, since these rows count all buffer instructions.
 

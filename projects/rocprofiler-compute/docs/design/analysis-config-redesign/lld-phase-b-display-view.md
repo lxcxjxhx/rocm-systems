@@ -72,7 +72,7 @@ Dev reads no summed collectable without a `<name>_per_dispatch` partner.
 
 ```
 src/rocprof_compute_soc/views/
-  gfx908/  gfx90a/  gfx942/  gfx950/  gfx115x/  gfx1250/
+  gfx908/  gfx90a/  gfx942/  gfx950/  gfx115x/  gfx1201/  gfx1250/
     0200_system_speed_of_light.yaml
     ...                       # one file per panel file of the arch
 ```
