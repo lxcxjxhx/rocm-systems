@@ -1,7 +1,10 @@
 # Copyright (c) Advanced Micro Devices, Inc.
 # SPDX-License-Identifier:  MIT
 
-"""Unit tests for utils/analysis_views.py: the values a view row gives, the errors for
+"""Unit tests for utils/analysis_views.py.
+
+tools/validate_views.py checks the shipped view files; these tests cover the panel
+config a view becomes (its structure and the values each row gives), the errors for
 broken views, the metric id resolver of -b and --list-metrics, and the profile mode
 imports.
 """
@@ -59,6 +62,43 @@ BROKEN_VIEW = {
         },
     ],
 }
+# A view with a CSV table and a per-channel metric table, and the library metrics
+# it shows.
+TOY_VIEW = {
+    "view": "L2 Cache (per Channel)",
+    "alias": "l2_per_channel",
+    "tables": [
+        {
+            "render": "raw_csv_table",
+            "title": "System Info",
+            "source": "sysinfo.csv",
+            "columnwise": True,
+        },
+        {
+            "title": "L2 Cache Hit Rate (Percent)",
+            "header": {"metric": "Metric", "expr": "Expression"},
+            "placeholder_range": {"::_1": "$total_l2_chan"},
+            "metrics": [
+                {"metric": "l2.chan_hit_rate", "label": "Channel ::_1"},
+                {"metric": "l2.chan_util"},
+            ],
+        },
+    ],
+}
+TOY_METRICS = {
+    "l2.chan_hit_rate": {
+        "name": "L2 Hit Rate",
+        "formula": "TCC_HIT[::_1]",
+        "unit": "Percent",
+        "description": "Hit rate of one channel.",
+    },
+    "l2.chan_util": {
+        "name": "L2 Utilization",
+        "formula": "TCC_BUSY[::_1]",
+        "unit": "Percent",
+        "description": "Busy cycles of one channel.",
+    },
+}
 
 
 def metric_rows(arch):
@@ -99,6 +139,46 @@ def test_rows_show_their_metric_as_the_view_asks():
     assert rows["16.4.0"][0] == "NC - Read"
     assert rows["16.4.0"][1]["xfer"] == "Read"
     assert rows["18.4.0"][1]["read req"] == metrics["l2.chan_rd"]["formula"]
+
+
+def test_panel_configs_keep_the_view_structure():
+    """A view becomes a panel config: panel id from the file prefix, table ids from
+    their position, table settings as the view gives them, and one row per view row
+    named by its label or its metric's name."""
+    panels = views_to_panel_configs({1800: TOY_VIEW}, TOY_METRICS, {})
+
+    assert panels == {
+        1800: {
+            "id": 1800,
+            "title": "L2 Cache (per Channel)",
+            "data source": [
+                {
+                    "raw_csv_table": {
+                        "id": 1801,
+                        "title": "System Info",
+                        "source": "sysinfo.csv",
+                        "columnwise": True,
+                    }
+                },
+                {
+                    "metric_table": {
+                        "id": 1802,
+                        "title": "L2 Cache Hit Rate (Percent)",
+                        "header": {"metric": "Metric", "expr": "Expression"},
+                        "metric": {
+                            "Channel ::_1": {"expr": "TCC_HIT[::_1]"},
+                            "L2 Utilization": {"expr": "TCC_BUSY[::_1]"},
+                            "placeholder_range": {"::_1": "$total_l2_chan"},
+                        },
+                    }
+                },
+            ],
+            "metrics_description": {
+                "Channel ::_1": "Hit rate of one channel.",
+                "L2 Utilization": "Busy cycles of one channel.",
+            },
+        }
+    }
 
 
 def test_panel_descriptions_come_from_the_library():
