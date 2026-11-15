@@ -45,21 +45,24 @@ Row fields:
 
 Schema checks: the file name, known fields at each level, render types, one of `metric`
 and `metrics` per row. Every referenced metric id exists in the arch's `MetricLibrary`,
-and a row asking for the measured peak has one.
+a row asking for the measured peak has one, and a row whose table shows Min, Max or Std
+Dev reads no summed collectable without a `<name>_per_dispatch` partner.
 
 
 ## Stage 6 -- Layer 3 reader
 
 `load_views(arch)` reads `views/<arch>/*.yaml` (the arch's metric library arch, e.g.
-`gfx115x` for gfx1151) in file name order. `views_to_panel_configs(views, metrics)`
-translates them into the `OrderedDict[int, dict]` that `build_dfs()` consumes:
+`gfx115x` for gfx1151) in file name order.
+`views_to_panel_configs(views, metrics, collectables)` translates them into the
+`OrderedDict[int, dict]` that `build_dfs()` consumes:
 
 - Panel IDs from the file names, table IDs from the table's position in the panel, and a
   row's numeric id from its position in the table.
 - Row name: the `label`, else the metric's `name`.
 - Main column: the metric's `formula`, wrapped in `ROUND()` when the row asks; `min`,
   `max` and `std dev`: `MIN`/`MAX`/`STD` of the formula per kernel (each `SUM(x)` and
-  `AVG(x)` becomes `(x)`).
+  `AVG(x)` becomes `(x)`, and each summed collectable becomes its
+  [per-dispatch partner](../../../src/rocprof_compute_soc/metric_library/README.md#collectables)).
 - `unit`, `peak` (or `peak_empirical`) and the panel's descriptions from the metric.
 
 
@@ -142,7 +145,8 @@ name differs from the metric's name, and keeps the display fields above.
 ### Validation
 
 `tools/validate_views.py` (pre-commit) checks the view files: their names, fields and render
-types, and that every metric they show is in the arch's metric library.
+types, that every metric they show is in the arch's metric library, and that their Min,
+Max and Std Dev columns have the per-dispatch partners they read.
 `test_analysis_views_sync.py`, next to the metric library sync test, checks every arch's
 views against the panel files until they are removed: the same panels, tables, headers
 and table settings in order, the same rows in order apart from rows that show no
@@ -170,24 +174,23 @@ unused copy in `utils/file_io.py` is deleted.
 
 **No fallback release:** the cutover release makes the new path the only path and removes
 the old one: the old panel config files, `load_panel_configs()`, the YAML counter scan in
-`detect_counters()` and the hardcoded built-in variables, along with the tooling listed
+`detect_counters()` and `analysis_configs/collectables/`, along with the tooling listed
 below ([cutover timeline](lld-index.md#cutover-timeline)).
 
-**`generate_configs()` in `analysis_base.py`** -- the new path replaces the
-`load_panel_configs()` call:
+**`generate_configs()` in `analysis_base.py`** -- reads the panel configs from the views
+through `arch_panel_configs()` in `analysis_views.py`:
 
 ```python
-library = MetricLibrary.load(METRIC_LIBRARY_DIR, arch)
-views = load_views(view_dirs, arch, library)
-ac.panel_configs = views_to_panel_configs(views, library)
+library = MetricLibrary.load(default_metric_library_dir(), arch)
+views_to_panel_configs(load_views(arch), library.metrics, library.collectable_formulas())
 ```
 
 
 **`detect_counters()` in `soc_base.py`** -- counter detection goes through
 `MetricLibrary.get_counters_for_metrics()`; the YAML-text scan is removed.
 
-**`get_build_in_vars()` in `utils_counter_defs.py`** -- loads from
-`MetricLibrary.variables`; the hardcoded dicts are removed.
+**`Collectables.of_arch()` in `utils_counter_defs.py`** -- returns
+`MetricLibrary.collectable_formulas()`; `analysis_configs/collectables/` is removed.
 
 **`-b` / `--filter-blocks`** -- string metric IDs are the primary format. Numeric
 IDs produce a deprecation warning with the equivalent string ID:
@@ -204,7 +207,7 @@ backward compatibility.
 
 | Tool | What changes |
 |---|---|
-| `validate_sets_metric_ids.py` | Delete it with the numeric set files; `tools/validate_metric_library.py` checks the string-ID sets. |
+| `validate_sets_metric_ids.py` | Deleted with the numeric set files when `--set` reads the metric library sets; `tools/validate_metric_library.py` checks the string-ID sets. |
 | `verify_against_config_template.py` | Remove Panel Config template validation. Only Layer 2 schema validation. Remove `gfx9_config_template.yaml` and `gfx11_config_template.yaml`. |
 | `metric_description_manager.py` | Remove old panel config reading path. |
 | `hash_manager.py` | Remove old per-arch directory entries from hash database. Only base arch dirs and `views/`. |
@@ -229,9 +232,9 @@ backward compatibility.
 Sets are defined in Layer 2 (see [Sets migration](lld-phase-a-metric-library.md#sets-migration)). What Layer 3 decides is how a
 set's results are shown:
 
-- **Which panels analyze shows after `profile --set`.** Today the set's numeric IDs are
-  saved as `filter_blocks` and select panels. A string ID such as `compute.salu_util`
-  appears in several panels (e.g. 2 and 11), so the views must decide. This is HLD OQ2.
-- **What `--list-sets` prints.** Today it prints numeric IDs.
-
-At the cutover, `--set` switches to the Layer 2 sets, with these display rules in place.
+- **Which rows analyze shows after `profile --set`.** The set's metric ids are saved as
+  `filter_blocks`, and analyze filters rows by them as `-b` does with metric ids: each id
+  selects every view row that shows it (`metric_placements()`), so `compute.salu_util`
+  shows in both panels 2 and 11. A flat set view is HLD OQ2.
+- **What `--list-sets` prints.** Each set's option and title, and the name and metric id
+  of each of its metrics.

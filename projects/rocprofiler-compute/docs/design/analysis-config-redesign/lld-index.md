@@ -15,18 +15,20 @@ connects to the existing pipeline, how the Phase B compatibility adapter transla
 between old and new formats, and what each self-contained PR delivers.
 
 **Scope:** Layers 2 and 3 -- metric library, display/view, and the compatibility adapter.
-Layer 1.5 (collectables) is a separate epic
-([single-pass metrics plan](../single-pass-and-multi-pass-metrics/hld-plan.md#terms)).
+Layer 1.5 (collectables) is designed in the
+[single-pass metrics plan](../single-pass-and-multi-pass-metrics/hld-plan.md#terms); the
+metric library holds each arch's collectables in `collectables.yaml`.
 Layer 1 (`sdk_config.yaml`) is out of scope. The metric formula evaluation engine (`eval_metric`, `build_eval_string`, `MetricEvaluator`) is unchanged --
 only where formulas are defined and how they reach the engine changes.
 
-Built-in variables (`$GRBM_GUI_ACTIVE_PER_XCD`, `$numActiveCUs`, ...) move into Layer 2
-too ([Built-in variable migration](lld-phase-a-metric-library.md#built-in-variable-migration)).
+Built-in variables (`$GRBM_GUI_ACTIVE_PER_XCD`, `$numActiveCUs`, ...) are collectables
+in the metric library
+([Built-in variable migration](lld-phase-a-metric-library.md#built-in-variable-migration)).
 
 **Phases.** The design docs use these two names:
 
 - **Phase A** is Stages 1-4: the metric library, its equivalence validator, sets and
-  built-in variables. Production does not change.
+  collectables. Production does not change.
   Detail: [Phase A -- Metric Library](lld-phase-a-metric-library.md).
 - **Phase B** is Stages 5-8: the views, `views_to_panel_configs()`, the cutover, and
   string ids in `-b`.
