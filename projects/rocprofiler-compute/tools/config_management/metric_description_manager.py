@@ -36,6 +36,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT.parent / "src"))
 
+# The generated per-arch description files and the docs files made from them.
+PER_ARCH_DIR = PROJECT_ROOT / "per_arch_metric_definitions"
+DOCS_DIR = PROJECT_ROOT.parent / "docs" / "data" / "metrics"
+
 from config_management import utils_ruamel as cm_utils
 
 from rocprof_compute_soc.metric_library.loader import METRIC_LIBRARY_PARENT_ARCH
@@ -715,12 +719,12 @@ def main() -> int:
     )
     parser.add_argument(
         "--per-arch-output",
-        default="tools/per_arch_metric_definitions",
+        default=str(PER_ARCH_DIR),
         help="Output directory for the per-arch description YAMLs",
     )
     parser.add_argument(
         "--docs-output-dir",
-        default="docs/data/metrics",
+        default=str(DOCS_DIR),
         help="Output directory for the generated docs YAMLs",
     )
 
