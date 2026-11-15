@@ -8,6 +8,7 @@ Tests the bin-packing helpers used by perfmon_coalesce. No GPU hardware
 required.
 """
 
+from collections import OrderedDict
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Set
@@ -16,7 +17,6 @@ from unittest.mock import MagicMock, patch
 import common
 import pytest
 
-import config
 from rocprof_compute_soc.metric_library import loader
 from rocprof_compute_soc.soc_base import (
     AnalysisConfigMetric,
@@ -44,6 +44,7 @@ from utils.utils_counter_defs import (
     per_dispatch_partner,
     summed_collectables,
 )
+from vendored import yaml
 
 # =============================================================================
 # Fixtures
@@ -157,7 +158,7 @@ def gfx1250_perfmon_config():
 
 
 @pytest.fixture
-def membw_analysis_soc(tmp_path: Path, monkeypatch) -> OmniSoC_Base:
+def membw_analysis_soc(monkeypatch) -> OmniSoC_Base:
     baseline_analysis_config = f"""\
 Panel Config:
   id: 200
@@ -192,23 +193,16 @@ Panel Config:
         EA Interface:
           value: SUM({TABLE_3013_COUNTER})
 """
-    config_root = tmp_path / "gfx950"
-    config_root.mkdir()
-    (config_root / "0200_baseline.yaml").write_text(
-        baseline_analysis_config,
-        encoding="utf-8",
+    soc = offline_soc("gfx950", [], membw_analysis=False)
+    panel_configs = OrderedDict(
+        (panel["id"], panel)
+        for panel in (
+            yaml.safe_load(text)["Panel Config"]
+            for text in (baseline_analysis_config, membw_analysis_config)
+        )
     )
-    (config_root / "3000_mem_bw.yaml").write_text(
-        membw_analysis_config,
-        encoding="utf-8",
-    )
-
-    monkeypatch.setattr(config, "analysis_configs_dir", tmp_path)
-    # The fixture's panel 200 is not the shipped Speed of Light, whose view replaces it.
-    monkeypatch.setattr(
-        "rocprof_compute_soc.soc_base.replaced_panel_metric_ids", lambda *_: None
-    )
-    return offline_soc("gfx950", [], membw_analysis=False)
+    monkeypatch.setattr(soc, "_profile_panel_configs", lambda: panel_configs)
+    return soc
 
 
 def _make_soc(perfmon_config, arch="gfx908", num_xcd=1, l2_banks=4):
@@ -519,10 +513,9 @@ def test_detect_counters_reads_only_metric_expressions(
     """Comments, titles, descriptions and metric names add no counters, whether a
     block or a table is selected. A row id selects its metric through the views and
     the metric library."""
-    config_root = config.analysis_configs_dir / "gfx950"
-    (config_root / "0200_baseline.yaml").write_text(
-        PROSE_ANALYSIS_CONFIG, encoding="utf-8"
-    )
+    membw_analysis_soc._profile_panel_configs()[200] = yaml.safe_load(
+        PROSE_ANALYSIS_CONFIG
+    )["Panel Config"]
     membw_analysis_soc.get_args().filter_blocks = filter_blocks
 
     counters, _ = membw_analysis_soc.detect_counters()
@@ -536,15 +529,12 @@ def test_detect_counters_reads_only_metric_expressions(
 
 @pytest.mark.parametrize("gpu_arch", CONFIG_ARCHS)
 def test_panel_counters_add_up_to_full_profile(gpu_arch: str) -> None:
-    """On the shipped configs, the counters of each panel (-b <panel>) add up to
+    """On the shipped views, the counters of each panel (-b <panel>) add up to
     the default profile, and with panel 30 to --membw-analysis."""
-    config_dir = config.analysis_configs_dir
     counters_by_file: dict[str, set[str]] = {}
-    for path in (config_dir / canonical_config_arch(gpu_arch)).glob("*.yaml"):
-        file_id = path.name.split("_")[0]
-        panel = str(int(file_id) // 100)
-        soc = offline_soc(gpu_arch, [panel], membw_analysis=True)
-        counters_by_file[file_id], _ = soc.detect_counters()
+    for panel_id in load_views(gpu_arch):
+        soc = offline_soc(gpu_arch, [str(panel_id // 100)], membw_analysis=True)
+        counters_by_file[f"{panel_id:04d}"], _ = soc.detect_counters()
     membw_file = str(MEMBW_ANALYSIS_PANEL_ID)
 
     default, _ = offline_soc(gpu_arch, [], False).detect_counters()

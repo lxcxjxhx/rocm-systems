@@ -374,31 +374,6 @@ def row_metric_ids(row: Dict[str, Any]) -> List[str]:
     return [metric_id for metric_id in row.get("metrics", {}).values() if metric_id]
 
 
-def replaced_panel_metric_ids(token: str, arch: Optional[str]) -> Optional[List[str]]:
-    """Return the metric ids a -b block, table or row id or a block alias selects in a
-    replaced panel (REPLACED_PANEL_IDS), or None if it selects another panel.
-
-    A row id is the id analyze shows.
-    """
-    if not arch or not has_views(arch):
-        return None
-    block_id = resolve_block_token(token, get_arch_alias_to_panel_id(arch))
-    if block_id is None:
-        return None
-    file_id = int(convert_metric_id_to_panel_info(block_id)[0])
-    if file_id not in REPLACED_PANEL_IDS:
-        return None
-    if _is_row_id(block_id):
-        row = _rows_by_position(arch).get(block_id)
-        return row_metric_ids(row) if row else []
-    return [
-        metric_id
-        for position, row in iter_view_rows(load_views(arch))
-        if f"{position}.".startswith(f"{block_id}.")
-        for metric_id in row_metric_ids(row)
-    ]
-
-
 def row_label(row: Dict[str, Any], metrics: Dict[str, Dict[str, Any]]) -> str:
     """Return the name a row shows: its label, or its metric's name."""
     if "label" in row:

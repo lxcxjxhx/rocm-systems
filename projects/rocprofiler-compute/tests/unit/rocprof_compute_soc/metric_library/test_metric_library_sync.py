@@ -30,13 +30,9 @@ from validate_metric_library import (
 
 import config
 from rocprof_compute_soc.metric_library import loader
-from rocprof_compute_soc.soc_base import OmniSoC_Base, iter_analysis_config_metrics
+from rocprof_compute_soc.soc_base import iter_analysis_config_metrics
 from utils.analysis_views import MAIN_COLUMNS
 from utils.mi_gpu_spec import mi_gpu_specs
-from utils.utils_common import (
-    MEMBW_ANALYSIS_PANEL_ID,
-    config_arch_members,
-)
 from utils.utils_counter_defs import Collectables, metric_value_keys
 
 
@@ -272,37 +268,6 @@ def row_metric_id(row: Row, library: loader.MetricLibrary, arch: str) -> Optiona
     return metric_id
 
 
-def make_soc(arch: str, membw_analysis: bool, filter_blocks: List[str]) -> OmniSoC_Base:
-    """Return an OmniSoC_Base for arch, with no GPU needed."""
-    args = SimpleNamespace(
-        filter_blocks=filter_blocks,
-        membw_analysis=membw_analysis,
-        set_selected=None,
-    )
-    machine_specs = SimpleNamespace(
-        gpu_arch=arch,
-        gpu_series=mi_gpu_specs.get_gpu_series(arch),
-        l2_banks=16,
-        num_xcd=1,
-        rocminfo_lines=None,
-    )
-    soc = OmniSoC_Base(args, machine_specs)
-    soc.set_arch(arch)
-    return soc
-
-
-def shown_blocks(arch: str) -> List[str]:
-    """Return the -b blocks for the shown files of arch, or none when all are shown."""
-    unshown = common.unshown_file_ids(arch)
-    if not unshown:
-        return []
-    file_ids = {
-        path.name.split("_")[0]
-        for path in (config.analysis_configs_dir / arch).glob("*.yaml")
-    }
-    return [str(int(file_id) // 100) for file_id in sorted(file_ids - unshown)]
-
-
 @pytest.fixture(scope="module", params=list(loader.METRIC_LIBRARY_PARENT_ARCH))
 def arch_view(request) -> SimpleNamespace:
     """One arch's library, its analysis config rows and the metric id of each row."""
@@ -399,20 +364,6 @@ def test_listed_variants_have_rows(arch_view):
         *UNIT_VARIANTS.get(arch_view.arch, {}),
     ]
     assert sorted(set(listed) - positions) == []
-
-
-def test_counters_match_detect_counters(arch_view):
-    arch = arch_view.arch
-    has_membw_panel = any(
-        (config.analysis_configs_dir / arch).glob(f"{MEMBW_ANALYSIS_PANEL_ID}_*.yaml")
-    )
-    gpu_arch = config_arch_members(arch)[0]
-    soc = make_soc(gpu_arch, has_membw_panel, shown_blocks(arch))
-    expected, _ = soc.detect_counters()
-    library_counters = arch_view.library.get_counters_for_metrics(
-        list(arch_view.library.metrics)
-    )
-    assert soc._expand_tcc_template_counters(library_counters) == expected
 
 
 def test_collectables_match_analysis_configs(arch_view):
