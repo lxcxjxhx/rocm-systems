@@ -5,17 +5,14 @@
 """Pre-commit hook: validate membw tree spec metric names.
 
 Checks:
-  1. Every metric referenced in the tree spec exists in the analysis config.
+  1. Every metric referenced in the tree spec exists in the membw tables of the views.
   2. No tree-referenced metric formula contains $denom.
 """
 
 import sys
 from pathlib import Path
 
-import yaml
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-ANALYSIS_DIR = PROJECT_ROOT / "src" / "rocprof_compute_soc" / "analysis_configs"
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from membw_analysis.guidance import _METRIC_THRESHOLD_RE
@@ -25,30 +22,21 @@ from membw_analysis.tree_spec import (
     load_tree_spec,
     membw_analysis_dir,
 )
-from utils.utils_common import canonical_config_arch
+from utils.analysis_views import arch_panel_configs, has_views
 
 
 def load_analysis_metrics(arch: str) -> dict[str, str]:
-    """Return {metric_name: formula} from membw-relevant tables."""
-    config_arch = canonical_config_arch(arch) or arch
-    arch_dir = ANALYSIS_DIR / config_arch
-    if not arch_dir.is_dir():
+    """Return {metric_name: formula} from the membw tables of arch's views."""
+    if not has_views(arch):
         return {}
 
     result: dict[str, str] = {}
-    for config_path in sorted(arch_dir.glob("*.yaml")):
-        with open(config_path, encoding="utf-8") as fh:
-            data = yaml.safe_load(fh)
-        panel = (data or {}).get("Panel Config", {})
-        for source in panel.get("data source", []):
+    for panel in arch_panel_configs(arch).values():
+        for source in panel["data source"]:
             metric_table = source.get("metric_table", {})
-            table_id = metric_table.get("id")
-            if table_id not in MEMBW_TABLE_IDS:
+            if metric_table.get("id") not in MEMBW_TABLE_IDS:
                 continue
-            metrics = metric_table.get("metric", {})
-            if not metrics:
-                continue
-            for name, definition in metrics.items():
+            for name, definition in (metric_table.get("metric") or {}).items():
                 if isinstance(definition, dict):
                     result[name] = str(definition.get("value", ""))
                 else:

@@ -45,12 +45,12 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-import config
-from rocprof_compute_soc.soc_base import iter_analysis_config_metrics
+from rocprof_compute_soc.soc_base import iter_panel_config_metrics
 from utils import file_io, parser, schema
+from utils.analysis_views import arch_panel_configs
 from utils.metrics.evaluation_pipeline import eval_metric
 from utils.metrics.expression import build_metric_value_string
-from utils.utils_common import canonical_config_arch, load_panel_configs
+from utils.utils_common import canonical_config_arch
 
 # Changes at least this large go in the delta table.
 DELTA_REL_THRESHOLD = 0.05
@@ -322,7 +322,7 @@ def min_formula_to_median_expr(min_formula: str) -> Optional[str]:
     """Rewrite a Min formula into a Median expression.
 
     Handles `MIN(x)` and `c * MIN(x)` / `MIN(x) * c` patterns that
-    appear in analysis_configs.
+    appear in metric formulas.
     """
     formula = min_formula.strip()
     if not formula or formula == "None":
@@ -405,9 +405,8 @@ def load_workload_metric_tables(wl_dir: Path) -> Tuple[object, pd.DataFrame]:
     Returns the arch config, with one table per panel, and the sysinfo frame.
     """
     sys_info, arch = read_sysinfo(wl_dir)
-    config_dir = config.analysis_configs_dir / (canonical_config_arch(arch) or arch)
     arch_config = schema.ArchConfig()
-    arch_config.panel_configs = load_panel_configs([str(config_dir)])
+    arch_config.panel_configs = arch_panel_configs(arch)
     parser.build_dfs(
         arch_configs=arch_config,
         filter_metrics=None,
@@ -705,10 +704,8 @@ def render_zero_sub_bucket_lines(summary: Dict[str, int]) -> str:
 
 
 def count_yaml_metric_entries(config_arch: str) -> Tuple[int, int]:
-    """Return (metric table entries, unique metric names) for analysis_configs."""
-    metrics = list(
-        iter_analysis_config_metrics(config.analysis_configs_dir / config_arch, set())
-    )
+    """Return (metric table entries, unique metric names) of the arch's views."""
+    metrics = list(iter_panel_config_metrics(arch_panel_configs(config_arch), set()))
     return len(metrics), len({metric.metric_name for metric in metrics})
 
 
@@ -723,7 +720,7 @@ def build_total_note(
     yaml_bit = (
         f"YAML metric definitions (~{yaml_entries} table entries / "
         f"~{yaml_unique} unique names in "
-        f"<code>analysis_configs/{html.escape(config_arch)}</code>)"
+        f"<code>views/{html.escape(config_arch)}</code>)"
     )
     totals = ", ".join(f"{html.escape(wl)}={s['total']}" for wl, s in summary.items())
     common_tail = (
