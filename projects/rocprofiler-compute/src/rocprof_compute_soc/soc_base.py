@@ -54,7 +54,6 @@ from utils.utils_common import (
     create_temp_rocprofiler_metrics_path,
     is_only_pc_sampling,
     is_tcc_channel_counter,
-    load_panel_configs,
     selects_roofline,
     validate_roofline_csv,
 )
@@ -615,16 +614,6 @@ def _table_expressions(table: Dict[str, Any]) -> List[str]:
         for metric in (table["metric"] or {}).values()
         for expression in metric_expressions(table, metric)
     ]
-
-
-def iter_analysis_config_metrics(
-    config_root: Path, exclude_file_ids: Set[str]
-) -> Iterator[AnalysisConfigMetric]:
-    """Iterate the metrics of the analysis config files in config_root, skipping files
-    whose id is in exclude_file_ids."""
-    yield from iter_panel_config_metrics(
-        load_panel_configs([str(config_root)]), exclude_file_ids
-    )
 
 
 def iter_panel_config_metrics(

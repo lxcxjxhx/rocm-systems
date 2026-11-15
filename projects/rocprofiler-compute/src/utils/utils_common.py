@@ -30,7 +30,6 @@ from typing import (
     Union,
 )
 
-import config
 from utils.logger import (
     console_debug,
     console_error,
@@ -573,32 +572,6 @@ def strip_ansi(text: str) -> str:
     return re.sub(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])", "", text)
 
 
-def load_panel_configs(
-    dirs: List[str],
-) -> OrderedDict[int, Dict[str, Any]]:
-    """
-    Load all panel configs from yaml file.
-    """
-    configs: dict[int, dict[str, Any]] = {}
-    for dir_path in dirs:
-        for yaml_file in Path(dir_path).glob("*.yaml"):
-            with open(yaml_file, encoding="utf-8") as file:
-                config_yml = yaml.safe_load(file)
-                # metric key can be None due to some metric-
-                # tables not having any metrics
-                # metric key should be empty dict instead of None
-                panel_config = config_yml["Panel Config"]
-                for data_source in panel_config["data source"]:
-                    metric_table = data_source.get("metric_table")
-                    if metric_table and metric_table.get("metric") is None:
-                        metric_table["metric"] = {}
-                configs[panel_config["id"]] = panel_config
-
-    # TODO: sort metrics as the header order in case they-
-    # are not defined in the same order
-    return OrderedDict(sorted(configs.items()))
-
-
 def expand_placeholder_ranges(
     panel_configs: OrderedDict[int, Dict[str, Any]],
     sys_info: Optional[Dict[str, Any]],
@@ -825,21 +798,6 @@ def load_yaml(filepath: Union[str, os.PathLike]) -> Dict[str, Any]:
     """Load YAML file and return as dictionary."""
     with open(filepath, encoding="utf-8") as f:
         return yaml.safe_load(f)
-
-
-def config_template_path_for_arch(
-    arch: str, configs_dir: Optional[Path] = None
-) -> Optional[Path]:
-    """Return the config template whose filename prefix matches arch.
-
-    Returns None when no template prefix matches.
-    """
-    directory = configs_dir if configs_dir is not None else config.analysis_configs_dir
-    for template_path in sorted(directory.glob("*_config_template.yaml")):
-        match = re.match(r"(gfx\d+)_config_template\.yaml$", template_path.name)
-        if match and arch.startswith(match.group(1)):
-            return template_path
-    return None
 
 
 def mapping_field_errors(

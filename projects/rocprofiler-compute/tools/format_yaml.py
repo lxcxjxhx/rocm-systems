@@ -24,13 +24,7 @@ from utils.equation_format import normalize_equation
 
 # Path patterns that contain metric equations to check (substrings matched against path)
 EQUATION_FILE_PATTERNS = [
-    "analysis_configs/gfx",
     "metric_library/gfx",
-]
-
-# Path suffixes to exclude from equation checking
-EQUATION_FILE_EXCLUDE_SUFFIXES = [
-    "_template.yaml",
 ]
 
 # Path patterns to skip entirely (substrings matched against path)
@@ -39,19 +33,8 @@ SKIP_FILE_PATTERNS = [
     "profiling_config.yaml",
 ]
 
-# YAML keys that contain metric equations ("formula" and "peak_empirical" in metric
-# library files)
-EQUATION_KEYS = {
-    "value",
-    "avg",
-    "min",
-    "max",
-    "std dev",
-    "expr",
-    "peak",
-    "formula",
-    "peak_empirical",
-}
+# YAML keys of the metric library that contain metric equations
+EQUATION_KEYS = {"formula", "peak", "peak_empirical"}
 
 # Path pattern of the metric library files, whose metric descriptions are filled to
 # DESCRIPTION_WIDTH columns
@@ -63,22 +46,16 @@ DESCRIPTION_RE = re.compile(
     r"^  description:(?: >-\n(?:    .*\n)+| .*\n)", re.MULTILINE
 )
 
-# Key of a metric_table's column titles, which use the equation keys for display text
-HEADER_KEY = "header"
-
 
 def extract_metric_equations(
     data: Dict[str, Any], path: str = ""
 ) -> List[Tuple[str, str]]:
-    """Return (key path, equation) of each equation field in YAML data, skipping
-    table headers."""
+    """Return (key path, equation) of each equation field in YAML data."""
     equations = []
 
     if isinstance(data, dict):
         for key, value in data.items():
             current_path = f"{path}.{key}" if path else key
-            if key == HEADER_KEY:
-                continue
             if key in EQUATION_KEYS and isinstance(value, str):
                 equations.append((current_path, value))
             elif isinstance(value, dict):
@@ -95,9 +72,6 @@ def extract_metric_equations(
 def _should_check_equations(path: Path) -> bool:
     """Return True if the file contains metric equations to check."""
     path_str = str(path)
-    for exclude_suffix in EQUATION_FILE_EXCLUDE_SUFFIXES:
-        if path_str.endswith(exclude_suffix):
-            return False
     for pattern in EQUATION_FILE_PATTERNS:
         if pattern in path_str:
             return True

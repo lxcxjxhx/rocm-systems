@@ -8,7 +8,7 @@ shows, by metric library id. Formulas, units, peaks and descriptions come from t
 library; a view row stores only how the panel shows the metric: a label other than
 the metric's name, rounding, the measured peak instead of the theoretical one, and the
 literal values of typed columns. views_to_panel_configs() turns an arch's views into
-the panel configs that load_panel_configs() reads from analysis_configs/.
+the panel configs analyze and profile read.
 
 views/<arch>/ holds the views of one metric library arch, one file per panel, and
 BUILT_IN_VIEWS the panels every arch shows from the workload's CSV files. A panel's
@@ -16,11 +16,8 @@ id comes from its file name (0300_memory_chart.yaml is panel 300), a table's id 
 position in the panel (301 is the first table), and a row's numeric id (3.1.0) from its
 position in the table.
 
-Analyze, its listings and the memory chart read their panel configs here
-(arch_panel_configs()), and the -b panel aliases come from the views. Profile counters
-still come from analysis_configs/, whose structure test_analysis_views_sync.py keeps
-equal to the views', except for a replaced panel (REPLACED_PANEL_IDS), whose rows'
-counters come from the views and the metric library.
+Analyze, its listings, the memory chart and profile's counter selection read their
+panel configs here (arch_panel_configs()), and the -b panel aliases come from the views.
 Standard library and the vendored YAML only: profile mode imports it.
 """
 
@@ -130,9 +127,6 @@ BUILT_IN_VIEWS: Dict[int, Dict[str, Any]] = {
         ],
     },
 }
-# Panels whose view replaces the panel file's rows (the Speed of Light, AIPROFCOMP-821):
-# until profile reads the views, profile takes their counters from the views.
-REPLACED_PANEL_IDS = (200,)
 
 
 def default_views_dir() -> Path:
@@ -180,7 +174,7 @@ def views_to_panel_configs(
     metrics: Dict[str, Dict[str, Any]],
     collectables: Dict[str, str],
 ) -> "OrderedDict[int, Dict[str, Any]]":
-    """Return the panel configs of an arch's views, as load_panel_configs() does.
+    """Return the panel configs of an arch's views.
 
     Args:
         views: One arch's views by panel id (load_views()).
