@@ -142,6 +142,8 @@ GFX1250_PANEL_ID_TO_SECTION: dict[int, str] = {
 
 GFX1201_PANEL_ID_TO_SECTION: dict[int, str] = {
     201: "System Speed-of-Light",
+    202: "System Speed-of-Light",
+    203: "System Speed-of-Light",
     301: "Memory chart - Instruction Cache",
     302: "Memory chart - Scalar Data Cache",
     303: "Memory chart - GL0 Cache (Vector L0)",
