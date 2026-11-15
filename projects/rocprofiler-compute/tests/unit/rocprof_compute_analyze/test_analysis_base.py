@@ -183,7 +183,7 @@ def test_sanitize_errors_when_workload_profiled_with_kernel_multiplexing(
     )["error"]
     with pytest.raises(SystemExit):
         OmniAnalyze_Base(
-            argparse.Namespace(tui=False, path=[[str(workload)]]), {}
+            argparse.Namespace(tui=False, path=[[str(workload)]])
         ).sanitize()
     assert mock_error.call_args.args == (
         "analysis",
