@@ -13,8 +13,8 @@ Each row is one `HIP_TEST_CASE`. The API and invariant come from the `// @assert
 
 | Tier | Cases | Tagged | Missing `@asserts` |
 |---|---:|---:|---:|
-| `contract` | 644 | 644 | 0 |
-| **total** | **644** | **644** | **0** |
+| `contract` | 645 | 645 | 0 |
+| **total** | **645** | **645** | **0** |
 
 ## Tier: `contract`
 
@@ -206,7 +206,7 @@ Each row is one `HIP_TEST_CASE`. The API and invariant come from the `// @assert
 | `Contract_DeviceTextureQuery_HipDeviceGetTexture1DLinearMaxWidth_ReturnsPositiveWidth_ForFloatChannel` | hipDeviceGetTexture1DLinearMaxWidth | a float-channel descriptor yields a positive max 1D linear texture width |
 | `Contract_DeviceTextureQuery_HipDeviceGetTexture1DLinearMaxWidth_ZeroSizedDescriptor_IsRejected` | hipDeviceGetTexture1DLinearMaxWidth | rejects an all-zero (no channel bits) descriptor with a non-success error |
 
-### `driver_array` (6 cases)
+### `driver_array` (7 cases)
 
 | Case | API | Asserts |
 |---|---|---|
@@ -216,6 +216,7 @@ Each row is one `HIP_TEST_CASE`. The API and invariant come from the `// @assert
 | `Contract_DriverArray_HipArrayCreate_InvalidArgs_AreRejected` | hipArrayCreate | rejects a null array-out pointer or null descriptor with a non-success error |
 | `Contract_DriverArray_HipArrayGetDescriptor_Default_RoundTripsDimsAndFormat` | hipArrayGetDescriptor | reads back the width, height, format, and channel count the array was created with |
 | `Contract_DriverArray_HipArrayGetDescriptor_InvalidArgs_AreRejected` | hipArrayGetDescriptor | rejects a null descriptor-out pointer or null array handle with a non-success error |
+| `Contract_DriverArray_HipArrayGetPlane_InvalidArgs_AreRejected` | hipArrayGetPlane | rejects a null plane-out pointer or null array handle with a non-success error |
 
 ### `driver_copy3d` (5 cases)
 
