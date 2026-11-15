@@ -11,8 +11,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from utils import utils_counter_defs
 from utils.utils_common import canonical_config_arch
-from utils.utils_counter_defs import extract_counters_and_variables
 from vendored import yaml
 
 # Each arch inherits from its immediate predecessor; None marks a family base.
@@ -217,7 +217,7 @@ class MetricLibrary:
             for field in COUNTER_EXPRESSION_FIELDS
             if self.metrics[metric_id].get(field) is not None
         ]
-        counters, _ = extract_counters_and_variables(
+        counters, _ = utils_counter_defs.extract_counters_and_variables(
             "\n".join(expressions), self.collectable_formulas()
         )
         return counters

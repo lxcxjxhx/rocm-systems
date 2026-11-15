@@ -20,14 +20,6 @@ GFX1250_COLLECTABLES = Collectables.of_arch("gfx1250")
 # =============================================================================
 
 
-@pytest.fixture
-def toy_collectables_dir(monkeypatch, tmp_path):
-    """A collectables directory with no file yet, and an empty cache."""
-    monkeypatch.setattr(utils_counter_defs, "COLLECTABLES_DIR", tmp_path)
-    monkeypatch.setattr(Collectables, "_formulas_by_arch", {})
-    return tmp_path
-
-
 class TestCollectables:
     """Tests for utils.utils_counter_defs.Collectables."""
 
@@ -44,16 +36,21 @@ class TestCollectables:
             == "GRBM_GUI_ACTIVE / $num_xcd"
         )
 
-    def test_each_collectable_comes_after_those_it_uses(self, toy_collectables_dir):
-        (toy_collectables_dir / "gfx900_collectables.yaml").write_text(
-            "rate: SUM($count) / 2\ncount: TA_BUSY\n", encoding="utf-8"
-        )
-        assert list(Collectables.of_arch("gfx900")) == ["count", "rate"]
+    def test_each_collectable_comes_after_those_it_uses(self):
+        formulas = {"rate": "SUM($count) / 2", "count": "TA_BUSY"}
+        assert list(utils_counter_defs._dependency_order(formulas)) == [
+            "count",
+            "rate",
+        ]
 
-    def test_collectables_that_use_each_other_fail(self, toy_collectables_dir):
-        (toy_collectables_dir / "gfx900_collectables.yaml").write_text(
-            "first: $second\nsecond: $first\n", encoding="utf-8"
-        )
+    def test_collectables_that_use_each_other_fail(self):
+        with pytest.raises(SystemExit):
+            utils_counter_defs._dependency_order({
+                "first": "$second",
+                "second": "$first",
+            })
+
+    def test_an_arch_without_a_metric_library_fails(self):
         with pytest.raises(SystemExit):
             Collectables.of_arch("gfx900")
 

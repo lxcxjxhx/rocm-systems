@@ -10,10 +10,9 @@ Imported by both the main runtime code and lightweight tooling such as
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-import config
+from rocprof_compute_soc.metric_library import loader
 from utils.logger import console_error
 from utils.utils_common import canonical_config_arch
-from vendored import yaml
 
 # ---------------------------------------------------------------------------
 # Regex patterns for HW counter and variable extraction
@@ -38,9 +37,6 @@ AMMOLITE_VAR_RE = re.compile(r"ammolite__([0-9A-Za-z_]+)")
 # ---------------------------------------------------------------------------
 # Collectables and denominator definitions
 # ---------------------------------------------------------------------------
-
-# Per-arch files of named formulas, written $name in metric formulas
-COLLECTABLES_DIR = config.analysis_configs_dir / "collectables"
 
 # A collectable whose formula matches is one value for all dispatches. A min or
 # max reads its partner named <name> + PER_DISPATCH_SUFFIX, which has a value per
@@ -210,8 +206,8 @@ def _dependency_order(formulas: Dict[str, str]) -> Dict[str, str]:
 
 class Collectables:
     """The collectables of each arch: named formulas that metric formulas use
-    as $name. Each arch's file is read once, and its collectables are kept so
-    that each one comes after the collectables it uses."""
+    as $name, from the arch's metric library. Each arch's are read once, and
+    kept so that each one comes after the collectables it uses."""
 
     _formulas_by_arch: Dict[str, Dict[str, str]] = {}
 
@@ -220,10 +216,12 @@ class Collectables:
         """Return the formula of each collectable of gpu_arch, by name."""
         config_arch = canonical_config_arch(gpu_arch)
         if config_arch not in cls._formulas_by_arch:
-            path = COLLECTABLES_DIR / f"{config_arch}_collectables.yaml"
-            if not path.is_file():
-                console_error(f"No collectables file for {gpu_arch}: {path}")
+            if config_arch not in loader.METRIC_LIBRARY_PARENT_ARCH:
+                console_error(f"No metric library for {gpu_arch}")
+            library = loader.MetricLibrary.load(
+                loader.default_metric_library_dir(), config_arch
+            )
             cls._formulas_by_arch[config_arch] = _dependency_order(
-                yaml.safe_load(path.read_text(encoding="utf-8"))
+                library.collectable_formulas()
             )
         return cls._formulas_by_arch[config_arch]

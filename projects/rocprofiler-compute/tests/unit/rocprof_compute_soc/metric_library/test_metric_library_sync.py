@@ -33,7 +33,7 @@ from rocprof_compute_soc.metric_library import loader
 from rocprof_compute_soc.soc_base import iter_analysis_config_metrics
 from utils.analysis_views import MAIN_COLUMNS
 from utils.mi_gpu_spec import mi_gpu_specs
-from utils.utils_counter_defs import Collectables, metric_value_keys
+from utils.utils_counter_defs import metric_value_keys
 
 
 class Row(NamedTuple):
@@ -364,15 +364,3 @@ def test_listed_variants_have_rows(arch_view):
         *UNIT_VARIANTS.get(arch_view.arch, {}),
     ]
     assert sorted(set(listed) - positions) == []
-
-
-def test_collectables_match_analysis_configs(arch_view):
-    library_collectables = {
-        name: canonical_formula(collectable["formula"])
-        for name, collectable in arch_view.library.collectables.items()
-    }
-    expected = {
-        name: canonical_formula(formula)
-        for name, formula in Collectables.of_arch(arch_view.arch).items()
-    }
-    assert library_collectables == expected
