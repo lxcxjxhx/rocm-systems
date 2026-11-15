@@ -3743,6 +3743,14 @@ typedef union rocprofiler_hip_api_args_t
         unsigned int*  graphId;
     } hipGraphExecGetId;
 #endif
+#if HIP_RUNTIME_API_TABLE_STEP_VERSION >= 43
+    struct
+    {
+        hipArray_t*  pPlaneArray;
+        hipArray_t   hArray;
+        unsigned int planeIdx;
+    } hipArrayGetPlane;
+#endif
 } rocprofiler_hip_api_args_t;
 
 ROCPROFILER_EXTERN_C_FINI
