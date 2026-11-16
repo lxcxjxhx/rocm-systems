@@ -1163,6 +1163,7 @@ if(BUILD_TESTS)
       DdaIpcIndexDataMPITests.cpp
       DdaFp8MPITests.cpp
       DdaAlltoAllInPlaceMPITests.cpp
+      DdaAlltoAllLLBankMPITests.cpp
       SymmetricAbortCheckModeMPITests.cpp
     )
 
