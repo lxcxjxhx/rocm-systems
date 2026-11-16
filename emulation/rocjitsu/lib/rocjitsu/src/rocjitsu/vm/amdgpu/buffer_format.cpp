@@ -3,7 +3,6 @@
 
 #include "rocjitsu/vm/amdgpu/buffer_format.h"
 #include "rocjitsu/isa/arch/amdgpu/shared/addr_calc_buffer.h"
-#include "rocjitsu/isa/arch/amdgpu/shared/fp_mode.h"
 #include "rocjitsu/vm/amdgpu/compute_unit.h"
 #include "rocjitsu/vm/amdgpu/lds.h"
 #include "rocjitsu/vm/amdgpu/mem_state.h"
@@ -324,7 +323,6 @@ util::FailureOr<std::array<uint32_t, 4>> unpack_buffer_format(uint32_t format, u
   const auto decoded = decode(format, encoding);
   if (decoded.failed())
     return util::Result::failure();
-  const fp_mode::detail::ScopedFenv environment(0);
   return unpack_format(decoded.value(), selectors, bytes);
 }
 
@@ -337,7 +335,6 @@ util::Result pack_buffer_format(uint32_t format, uint32_t selectors,
   const auto resolved = resolve_store_selectors(decoded.value(), selectors);
   if (resolved.failed())
     return util::Result::failure();
-  const fp_mode::detail::ScopedFenv environment(0);
   const uint32_t component_mask = (1u << components.size()) - 1u;
   pack_format(decoded.value(), resolved.value(), components, bytes, missing, encoding,
               component_mask);
@@ -437,7 +434,6 @@ void capture_buffer_format_store(Wavefront &wf, VectorMemState &d, uint32_t data
   if (split)
     tail.emplace(regs.read_vgpr_region(data_base + registers - 1, 1, d.lane_mask, tail_mask));
   const auto &format = d.decoded_buffer_format;
-  const fp_mode::detail::ScopedFenv environment(0);
   d.store_data.resize(d.wf_size * d.elem_size);
   for (uint32_t lane = 0; lane < d.wf_size; ++lane) {
     if (!(d.lane_mask & (1ULL << lane)))
@@ -564,7 +560,6 @@ void complete_buffer_format_load(Wavefront &wf, ComputeUnitCore &cu, const Vecto
   if (!d.lds_dst && !cu.owns_vgpr_range(wf, d.dst_reg_base, registers))
     return;
   const auto &format = d.decoded_buffer_format;
-  const fp_mode::detail::ScopedFenv environment(0);
   const uint64_t lane_write_mask =
       d.lds_dst ? lds_destination_write_mask(d, cu.arch()) : d.exec_mask;
   for (uint32_t lane = 0; lane < d.wf_size; ++lane) {

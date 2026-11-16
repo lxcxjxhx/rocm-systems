@@ -2252,10 +2252,8 @@ inline void execute_v_add_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
                                                 wf.ieee_mode(), inst.inst_.omod),
                 wf.fp_round_mode_f32());
           }();
-          if (inst.inst_.clamp) {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
+          if (inst.inst_.clamp)
             v = amdgpu::clamp_floating_result(v, wf);
-          }
           return v;
         }()));
   }
@@ -7179,7 +7177,6 @@ inline void execute_v_cos_f16_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_cos_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   uint64_t exec = dpp::execution_lane_mask(inst, wf);
   for (uint32_t lane = 0; lane < wf.wf_size(); ++lane) {
     if (!(exec & (1ULL << lane)))
@@ -7194,7 +7191,6 @@ inline void execute_v_cos_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_cos_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   uint64_t exec = dpp::execution_lane_mask(inst, wf);
   for (uint32_t lane = 0; lane < wf.wf_size(); ++lane) {
     if (!(exec & (1ULL << lane)))
@@ -9870,7 +9866,6 @@ inline void execute_v_exp_f16_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_exp_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   ROCJITSU_TRY_SIMD_VOP1_UNARY(float32_t, float32_t, [&wf](auto a) {
     return util::exp_f32_simd(a, amdgpu::fp_mode::quiets_nan(wf.cu().arch(), wf.ieee_mode()));
   });
@@ -9888,7 +9883,6 @@ inline void execute_v_exp_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_exp_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   ROCJITSU_TRY_SIMD_VOP3_UNARY_FP(
       float32_t, float32_t,
       [&wf](auto a) {
@@ -9925,7 +9919,6 @@ inline void execute_v_exp_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
 template <typename Inst>
 inline void execute_v_exp_legacy_f32_vop1([[maybe_unused]] Inst &inst,
                                           [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   uint64_t exec = dpp::execution_lane_mask(inst, wf);
   for (uint32_t lane = 0; lane < wf.wf_size(); ++lane) {
     if (!(exec & (1ULL << lane)))
@@ -9941,7 +9934,6 @@ inline void execute_v_exp_legacy_f32_vop1([[maybe_unused]] Inst &inst,
 template <typename Inst>
 inline void execute_v_exp_legacy_f32_vop3([[maybe_unused]] Inst &inst,
                                           [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   uint64_t exec = dpp::execution_lane_mask(inst, wf);
   for (uint32_t lane = 0; lane < wf.wf_size(); ++lane) {
     if (!(exec & (1ULL << lane)))
@@ -10271,10 +10263,8 @@ inline void execute_v_fma_dx9_zero_f32_vop3([[maybe_unused]] Inst &inst,
                 amdgpu::fp_mode::effective_omod(wf.cu().arch(), 0, wf.ieee_mode(), inst.inst_.omod),
                 wf.fp_round_mode_f32());
           }();
-          if (inst.inst_.clamp) {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
+          if (inst.inst_.clamp)
             v = amdgpu::clamp_floating_result(v, wf);
-          }
           return v;
         }()));
   }
@@ -10324,10 +10314,8 @@ inline void execute_v_fma_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
                                                 wf.ieee_mode(), inst.inst_.omod),
                 wf.fp_round_mode_f32());
           }();
-          if (inst.inst_.clamp) {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
+          if (inst.inst_.clamp)
             v = amdgpu::clamp_floating_result(v, wf);
-          }
           return v;
         }()));
   }
@@ -10461,7 +10449,6 @@ inline void execute_v_fma_mixhi_f16_vop3p([[maybe_unused]] Inst &inst,
       b = -b;
     if (inst.inst_.neg & 4)
       c = -c;
-    amdgpu::fp_mode::ScopedEnvironment environment(0);
     uint16_t h = amdgpu::fp_mode::detail::fma_f32_to_f16_nearest_environment(
         a, b, c, wf.fp_round_mode_f16_f64(), inst.inst_.clamp, wf.fp16_ovfl(),
         amdgpu::floating_clamp_nan_to_zero(wf));
@@ -10513,7 +10500,6 @@ inline void execute_v_fma_mixlo_f16_vop3p([[maybe_unused]] Inst &inst,
       b = -b;
     if (inst.inst_.neg & 4)
       c = -c;
-    amdgpu::fp_mode::ScopedEnvironment environment(0);
     uint16_t h = amdgpu::fp_mode::detail::fma_f32_to_f16_nearest_environment(
         a, b, c, wf.fp_round_mode_f16_f64(), inst.inst_.clamp, wf.fp16_ovfl(),
         amdgpu::floating_clamp_nan_to_zero(wf));
@@ -10626,10 +10612,8 @@ inline void execute_v_fmac_dx9_zero_f32_vop3([[maybe_unused]] Inst &inst,
                 amdgpu::fp_mode::effective_omod(wf.cu().arch(), 0, wf.ieee_mode(), inst.inst_.omod),
                 wf.fp_round_mode_f32());
           }();
-          if (inst.inst_.clamp) {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
+          if (inst.inst_.clamp)
             v = amdgpu::clamp_floating_result(v, wf);
-          }
           return v;
         }()));
   }
@@ -10739,10 +10723,8 @@ inline void execute_v_fmac_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]
                                                 wf.ieee_mode(), inst.inst_.omod),
                 wf.fp_round_mode_f32());
           }();
-          if (inst.inst_.clamp) {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
+          if (inst.inst_.clamp)
             v = amdgpu::clamp_floating_result(v, wf);
-          }
           return v;
         }()));
   }
@@ -11501,7 +11483,6 @@ inline void execute_v_log_f16_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_log_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   ROCJITSU_TRY_SIMD_VOP1_UNARY(float32_t, float32_t, [&wf](auto a) {
     return util::log_f32_simd(a, amdgpu::fp_mode::quiets_nan(wf.cu().arch(), wf.ieee_mode()));
   });
@@ -11519,7 +11500,6 @@ inline void execute_v_log_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_log_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   ROCJITSU_TRY_SIMD_VOP3_UNARY_FP(
       float32_t, float32_t,
       [&wf](auto a) {
@@ -11556,7 +11536,6 @@ inline void execute_v_log_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
 template <typename Inst>
 inline void execute_v_log_legacy_f32_vop1([[maybe_unused]] Inst &inst,
                                           [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   uint64_t exec = dpp::execution_lane_mask(inst, wf);
   for (uint32_t lane = 0; lane < wf.wf_size(); ++lane) {
     if (!(exec & (1ULL << lane)))
@@ -11572,7 +11551,6 @@ inline void execute_v_log_legacy_f32_vop1([[maybe_unused]] Inst &inst,
 template <typename Inst>
 inline void execute_v_log_legacy_f32_vop3([[maybe_unused]] Inst &inst,
                                           [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   uint64_t exec = dpp::execution_lane_mask(inst, wf);
   for (uint32_t lane = 0; lane < wf.wf_size(); ++lane) {
     if (!(exec & (1ULL << lane)))
@@ -13348,9 +13326,7 @@ inline void execute_v_mul_dx9_zero_f32_vop3([[maybe_unused]] Inst &inst,
       continue;
     sdwa::write_lane<amdgpu::sdwa::ResultFormat::F32>(
         inst, wf, inst.vdst, lane, std::bit_cast<uint32_t>([&]() {
-          amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
           float v = [&]() {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
             float v = amdgpu::fp_mode::arithmetic<amdgpu::fp_mode::Arithmetic::MUL_LEGACY>(
                 [&]() {
                   float sv =
@@ -13510,10 +13486,8 @@ inline void execute_v_mul_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
                                                 wf.ieee_mode(), inst.inst_.omod),
                 wf.fp_round_mode_f32());
           }();
-          if (inst.inst_.clamp) {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
+          if (inst.inst_.clamp)
             v = amdgpu::clamp_floating_result(v, wf);
-          }
           return v;
         }()));
   }
@@ -13764,9 +13738,7 @@ inline void execute_v_mul_legacy_f32_vop3([[maybe_unused]] Inst &inst,
       continue;
     sdwa::write_lane<amdgpu::sdwa::ResultFormat::F32>(
         inst, wf, inst.vdst, lane, std::bit_cast<uint32_t>([&]() {
-          amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
           float v = [&]() {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
             float v = amdgpu::fp_mode::arithmetic<amdgpu::fp_mode::Arithmetic::MUL_LEGACY>(
                 [&]() {
                   float sv =
@@ -15021,7 +14993,6 @@ inline void execute_v_rcp_f16_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_rcp_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   ROCJITSU_TRY_SIMD_VOP1_UNARY(float32_t, float32_t, [&wf](auto a) {
     return util::rcp_f32_simd(a, amdgpu::fp_mode::quiets_nan(wf.cu().arch(), wf.ieee_mode()));
   });
@@ -15039,7 +15010,6 @@ inline void execute_v_rcp_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_rcp_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   ROCJITSU_TRY_SIMD_VOP3_UNARY_FP(
       float32_t, float32_t,
       [&wf](auto a) {
@@ -15372,7 +15342,6 @@ inline void execute_v_rsq_f16_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_rsq_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   ROCJITSU_TRY_SIMD_VOP1_UNARY(float32_t, float32_t, [&wf](auto a) {
     return util::rsq_f32_simd(a, amdgpu::fp_mode::quiets_nan(wf.cu().arch(), wf.ieee_mode()));
   });
@@ -15390,7 +15359,6 @@ inline void execute_v_rsq_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]]
 
 template <typename Inst>
 inline void execute_v_rsq_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   ROCJITSU_TRY_SIMD_VOP3_UNARY_FP(
       float32_t, float32_t,
       [&wf](auto a) {
@@ -15783,7 +15751,6 @@ inline void execute_v_sqrt_f16_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]
 
 template <typename Inst>
 inline void execute_v_sqrt_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   uint32_t alu_causes = classify_sqrt_f32_vop1(inst, wf);
   wf.set_trapsts(wf.trapsts() | alu_causes);
   if (!alu_exception_trap_enables(wf)) {
@@ -15805,7 +15772,6 @@ inline void execute_v_sqrt_f32_vop1([[maybe_unused]] Inst &inst, [[maybe_unused]
 
 template <typename Inst>
 inline void execute_v_sqrt_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]] Wavefront &wf) {
-  fp_mode::ScopedEnvironment environment(0);
   uint32_t alu_causes = classify_sqrt_f32_vop3(inst, wf);
   wf.set_trapsts(wf.trapsts() | alu_causes);
   if (!alu_exception_trap_enables(wf)) {
@@ -16128,10 +16094,8 @@ inline void execute_v_sub_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unused]]
                                                 wf.ieee_mode(), inst.inst_.omod),
                 wf.fp_round_mode_f32());
           }();
-          if (inst.inst_.clamp) {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
+          if (inst.inst_.clamp)
             v = amdgpu::clamp_floating_result(v, wf);
-          }
           return v;
         }()));
   }
@@ -16630,10 +16594,8 @@ inline void execute_v_subrev_f32_vop3([[maybe_unused]] Inst &inst, [[maybe_unuse
                                                 wf.ieee_mode(), inst.inst_.omod),
                 wf.fp_round_mode_f32());
           }();
-          if (inst.inst_.clamp) {
-            amdgpu::fp_mode::detail::ScopedFenv environment(wf.fp_round_mode_f32());
+          if (inst.inst_.clamp)
             v = amdgpu::clamp_floating_result(v, wf);
-          }
           return v;
         }()));
   }

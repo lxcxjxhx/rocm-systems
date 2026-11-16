@@ -50,7 +50,6 @@ uint32_t binary_causes(uint32_t a, uint32_t b, uint64_t modifiers, uint32_t roun
   }
   if (ma >= F32::kInfinity || mb >= F32::kInfinity || std::max(ma, mb) < 0x7f000000u)
     return causes;
-  amdgpu::fp_mode::ScopedEnvironment nearest(0);
   const double exact = amdgpu::fp_mode::detail::round_to_odd(amdgpu::fp_mode::detail::add_exact(
       amdgpu::fp_status::value<F32>(a), amdgpu::fp_status::value<F32>(b)));
   const uint32_t large_sum = amdgpu::fp_status::result_causes<F32>(exact, 0, round);

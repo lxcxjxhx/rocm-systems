@@ -84,6 +84,7 @@ mixed_fma_f16_simd(util::native<float> a, util::native<float> b, util::native<fl
   a.copy_to(av, util::stdx::vector_aligned);
   b.copy_to(bv, util::stdx::vector_aligned);
   c.copy_to(cv, util::stdx::vector_aligned);
+  // Back to nearest-even: the GFX908 FMA_MIX path calls this inside its guest-rounding scope.
   fp_mode::ScopedEnvironment environment(0);
   for (std::size_t base = 0; base < W; base += WD) {
     const D da =

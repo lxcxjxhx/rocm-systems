@@ -1003,7 +1003,6 @@ fma_f16_mode_simd(util::native<uint32_t> src0, util::native<uint32_t> src1,
                   util::native<uint32_t> src2, bool abs0, bool abs1, bool abs2, bool neg0,
                   bool neg1, bool neg2, uint32_t round_mode, uint32_t denorm_mode, uint32_t omod,
                   bool clamp, bool fp16_ovfl, bool clamp_nan_to_zero, bool quiet_nan) {
-  fp_mode::ScopedEnvironment nearest_environment(0);
   constexpr std::size_t W32 = util::native_width_v<uint32_t>;
   constexpr std::size_t W64 = util::native_width64;
   static_assert(W32 % W64 == 0);
@@ -1287,10 +1286,7 @@ inline util::native<float> pkf32_neg(util::native<float> v, bool do_neg) {
 /// `Scoped` false constructs nothing, leaving host-float functors' code generation
 /// and their host NaN selection untouched.
 ///
-/// VOPD in simd_coverage.h reaches the same policy without this helper: its two
-/// slots are separate computation regions, so each scopes its own chunk loop.
-/// The VOP3P packed-float and FMA MIX helpers keep their existing instruction-wide
-/// scopes, which predate this helper and still span view acquisition.
+/// The VOP3P packed-float and FMA MIX helpers keep their own instruction-wide scopes.
 template <bool Scoped, typename View, typename Body>
 [[nodiscard]] inline bool run_instruction_chunks(const View &dst, uint32_t round_mode, Body body) {
   if constexpr (Scoped) {
@@ -3482,10 +3478,10 @@ template <bool Legacy, typename Inst> inline void execute_cdna2_mad_f32(Inst &in
   } else if (try_execute_fmac_vop3_fp_simd<true>(inst, wf, evaluate)) {
     return;
   }
-  fp_mode::ScopedEnvironment environment(wf.fp_round_mode_f32());
   auto output = output_modifier_policy<fp_format::F32>(wf, inst.inst_.omod, inst.inst_.clamp);
   RegisterAccess regs(wf);
   const uint64_t exec = dpp::execution_lane_mask(inst, wf);
+  fp_mode::ScopedEnvironment environment(wf.fp_round_mode_f32());
   for (uint32_t lane = 0; lane < wf.wf_size(); ++lane) {
     if (!(exec & (uint64_t{1} << lane)))
       continue;
@@ -3591,8 +3587,8 @@ inline void execute_cdna2_mad_vop2(Inst &inst, Wavefront &wf) {
                                                      round)) {
     return;
   }
-  fp_mode::ScopedEnvironment environment(round);
   const uint64_t exec = dpp::execution_lane_mask(inst, wf);
+  fp_mode::ScopedEnvironment environment(round);
   for (uint32_t lane = 0; lane < wf.wf_size(); ++lane) {
     if (!(exec & (uint64_t{1} << lane)))
       continue;
@@ -4269,8 +4265,8 @@ template <FmaMixDst DstMode, bool Fused = false, bool NarrowF32 = false, typenam
     return r;
   };
   if constexpr (DstMode == FmaMixDst::F32) {
-    fp_mode::ScopedEnvironment environment(wf.fp_round_mode_f32());
     auto dst = regs.write_operand(inst.vdst, exec);
+    fp_mode::ScopedEnvironment environment(wf.fp_round_mode_f32());
     for (uint32_t base = 0; base < wf.wf_size(); base += static_cast<uint32_t>(W)) {
       const uint64_t chunk = (exec >> base) & chunk_full;
       if (chunk == 0)
@@ -4280,10 +4276,10 @@ template <FmaMixDst DstMode, bool Fused = false, bool NarrowF32 = false, typenam
     }
   } else {
     // GFX908 narrows the rounded F32 FMA result to F16.
+    auto dst = regs.write_operand(inst.vdst, exec, DstMode == FmaMixDst::F16_LO ? 0x3 : 0xc);
     std::optional<fp_mode::ScopedEnvironment> environment;
     if constexpr (NarrowF32)
       environment.emplace(wf.fp_round_mode_f32());
-    auto dst = regs.write_operand(inst.vdst, exec, DstMode == FmaMixDst::F16_LO ? 0x3 : 0xc);
     for (uint32_t base = 0; base < wf.wf_size(); base += static_cast<uint32_t>(W)) {
       const uint64_t chunk = (exec >> base) & chunk_full;
       if (chunk == 0)
@@ -4475,7 +4471,6 @@ template <PackedFloatOp Op, bool Bf16, typename Inst>
     if (!inst.src2.simd_capable())
       return false;
   }
-  fp_mode::ScopedEnvironment nearest_environment(0);
   constexpr std::size_t W = util::native_width64;
   using U = util::narrow32<uint32_t>;
   const uint64_t exec = dpp::execution_lane_mask(inst, wf);
@@ -4633,7 +4628,6 @@ template <typename Inst, typename Op>
   if (simd_force_scalar() || !sdwa::supports_direct_simd_store(inst) || !inst.src0.simd_capable() ||
       !inst.src1.simd_capable() || !inst.vdst.simd_capable())
     return false;
-  fp_mode::ScopedEnvironment environment(wf.fp_round_mode_f32());
   auto flush_input = [&wf](util::native<float> value) {
     return (wf.fp_denorm_mode_f32() & 1u) ? value : denormal::flush_value(value);
   };
@@ -4664,6 +4658,7 @@ template <typename Inst, typename Op>
   auto src0 = regs.read_operand_pair32(inst.src0, exec, scalar_mode);
   auto src1 = regs.read_operand_pair32(inst.src1, exec, scalar_mode);
   auto dst = regs.write_operand_pair32(inst.vdst, exec);
+  fp_mode::ScopedEnvironment environment(wf.fp_round_mode_f32());
   for (uint32_t base = 0; base < wf.wf_size(); base += static_cast<uint32_t>(W)) {
     const uint64_t chunk = (exec >> base) & chunk_full;
     if (chunk == 0)
@@ -4716,7 +4711,6 @@ template <typename Inst, typename Op>
   if (simd_force_scalar() || !sdwa::supports_direct_simd_store(inst) || !inst.src0.simd_capable() ||
       !inst.src1.simd_capable() || !inst.src2.simd_capable() || !inst.vdst.simd_capable())
     return false;
-  fp_mode::ScopedEnvironment environment(wf.fp_round_mode_f32());
   auto flush_input = [&wf](util::native<float> value) {
     return (wf.fp_denorm_mode_f32() & 1u) ? value : denormal::flush_value(value);
   };
@@ -4742,6 +4736,7 @@ template <typename Inst, typename Op>
   auto src1 = regs.read_operand_pair32(inst.src1, exec, scalar_mode);
   auto src2 = regs.read_operand_pair32(inst.src2, exec, scalar_mode);
   auto dst = regs.write_operand_pair32(inst.vdst, exec);
+  fp_mode::ScopedEnvironment environment(wf.fp_round_mode_f32());
   for (uint32_t base = 0; base < wf.wf_size(); base += static_cast<uint32_t>(W)) {
     const uint64_t chunk = (exec >> base) & chunk_full;
     if (chunk == 0)

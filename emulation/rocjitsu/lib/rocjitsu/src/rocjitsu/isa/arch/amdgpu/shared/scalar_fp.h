@@ -138,7 +138,6 @@ void round_integral(Wavefront &wf, const Operand &dst, const Operand &source) {
     if (use_ieee_nan(wf))
       result |= Fmt::kQuiet;
   } else {
-    fp::ScopedEnvironment environment(0);
     const float input = static_cast<float>(status::value<Fmt>(input_bits));
     float rounded;
     if constexpr (op == Op::Ceil)
@@ -185,22 +184,19 @@ template <typename From, typename To>
 void convert(Wavefront &wf, const Operand &dst, const Operand &src, bool high = false) {
   const uint32_t a = read<From>(wf, src, high);
   uint32_t causes = 0, result;
-  {
-    fp::ScopedEnvironment environment(0);
-    if constexpr (cvt::is_integer_v<To>) {
-      using Int = std::conditional_t<To::kSigned, int32_t, uint32_t>;
-      const uint32_t bits = prepare<From>(wf, a);
-      result = cvt::f32_to_integer<Int>(bits, cvt::Rounding::TOWARD_ZERO, cvt::NanResult::ZERO);
-      causes = status::input_causes<From>(a, denorm<From>(wf));
-      const double x = status::value<From>(bits), truncated = std::trunc(x);
-      if (!std::isfinite(x) || x < std::numeric_limits<Int>::min() ||
-          truncated > std::numeric_limits<Int>::max())
-        causes = status::kInvalid;
-      else if (wf.cu().arch() != ROCJITSU_CODE_ARCH_RDNA4 && truncated != x)
-        causes |= status::kInexact;
-    } else {
-      result = to_float<From, To>(wf, a, rounding<To>(wf), causes);
-    }
+  if constexpr (cvt::is_integer_v<To>) {
+    using Int = std::conditional_t<To::kSigned, int32_t, uint32_t>;
+    const uint32_t bits = prepare<From>(wf, a);
+    result = cvt::f32_to_integer<Int>(bits, cvt::Rounding::TOWARD_ZERO, cvt::NanResult::ZERO);
+    causes = status::input_causes<From>(a, denorm<From>(wf));
+    const double x = status::value<From>(bits), truncated = std::trunc(x);
+    if (!std::isfinite(x) || x < std::numeric_limits<Int>::min() ||
+        truncated > std::numeric_limits<Int>::max())
+      causes = status::kInvalid;
+    else if (wf.cu().arch() != ROCJITSU_CODE_ARCH_RDNA4 && truncated != x)
+      causes |= status::kInexact;
+  } else {
+    result = to_float<From, To>(wf, a, rounding<To>(wf), causes);
   }
   commit(wf, dst, result, causes);
 }
@@ -209,21 +205,18 @@ inline void pack_rtz(Wavefront &wf, const Operand &dst, const Operand &lo, const
   const uint32_t low_input = read<F32>(wf, lo);
   const uint32_t high_input = read<F32>(wf, hi);
   uint32_t low, high, causes = 0;
-  {
-    fp::ScopedEnvironment environment(0);
-    if (wf.cu().arch() == ROCJITSU_CODE_ARCH_RDNA4) {
-      // gfx1201 packs both conversions without changing floating-point status.
-      cvt::ToFloat<F32, F16> policy;
-      policy.input = amdgpu::input_denormal::Policy::make(denorm<F32>(wf));
-      policy.rounding.direction = cvt::Rounding::TOWARD_ZERO;
-      policy.rounding.flush_tiny = !(denorm<F16>(wf) & 2);
-      policy.quiet_nan = true;
-      low = policy(low_input);
-      high = policy(high_input);
-    } else {
-      low = to_float<F32, F16>(wf, low_input, 3, causes);
-      high = to_float<F32, F16>(wf, high_input, 3, causes);
-    }
+  if (wf.cu().arch() == ROCJITSU_CODE_ARCH_RDNA4) {
+    // gfx1201 packs both conversions without changing floating-point status.
+    cvt::ToFloat<F32, F16> policy;
+    policy.input = amdgpu::input_denormal::Policy::make(denorm<F32>(wf));
+    policy.rounding.direction = cvt::Rounding::TOWARD_ZERO;
+    policy.rounding.flush_tiny = !(denorm<F16>(wf) & 2);
+    policy.quiet_nan = true;
+    low = policy(low_input);
+    high = policy(high_input);
+  } else {
+    low = to_float<F32, F16>(wf, low_input, 3, causes);
+    high = to_float<F32, F16>(wf, high_input, 3, causes);
   }
   commit(wf, dst, low | (high << 16), causes);
 }
