@@ -363,6 +363,7 @@ constexpr HwregDescriptor RDNA4_HWREGS[] = {
     {21, "WAVE_SCRATCH_BASE_HI", HwregState::Unsupported, HwregWritePolicy::Privileged},
     {23, "WAVE_HW_ID1", HwregState::Unsupported, HwregWritePolicy::ReadOnly},
     {24, "WAVE_HW_ID2", HwregState::Unsupported, HwregWritePolicy::ReadOnly},
+    {26, "WAVE_SCHED_MODE", HwregState::WaveSchedMode, HwregWritePolicy::UserWritable},
     {28, "IB_STS2", HwregState::Unsupported, HwregWritePolicy::ReadOnly},
     {29, "SHADER_CYCLES_LO", HwregState::Unsupported, HwregWritePolicy::ReadOnly},
     {30, "SHADER_CYCLES_HI", HwregState::Unsupported, HwregWritePolicy::ReadOnly},
@@ -692,6 +693,9 @@ HwregAccessResult write_raw_hwreg(Wavefront &wf, HwregState state, uint32_t raw_
     wf.set_mode_raw(raw_value);
     return HwregAccessResult::Success;
   case HwregState::WaveSchedMode:
+    if ((wf.wave_sched_mode_raw() & 3u) == 2u && (raw_value & 3u) != 2u)
+      if (auto *scoreboard = wf.memory_wait_scoreboard())
+        scoreboard->leave_expert_scheduling();
     wf.set_wave_sched_mode_raw(raw_value);
     return HwregAccessResult::Success;
   case HwregState::FlatScratchLo:

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 #include "rocjitsu/isa/arch/amdgpu/shared/wait_counter_policy.h"
+#include "rocjitsu/isa/arch/amdgpu/shared/scalar_operand_selectors.h"
+
+#include <algorithm>
 
 #include "rocjitsu/isa/instruction.h"
 #include "rocjitsu/isa/operand.h"
@@ -100,8 +103,26 @@ WaitCounterPolicy::counter_no_wait_value(rj_code_arch_t arch, WaitCounterKind co
   }
 }
 
-[[nodiscard]] util::FailureOr<std::optional<WaitFields>>
+const Operand *WaitCounterPolicy::relative_wait_operand(const Instruction &inst,
+                                                        rj_code_arch_t arch) {
+  if (arch != ROCJITSU_CODE_ARCH_RDNA1 && arch != ROCJITSU_CODE_ARCH_RDNA2)
+    return nullptr;
+  const auto name = inst.mnemonic();
+  if (name != "s_waitcnt_vmcnt" && name != "s_waitcnt_lgkmcnt" && name != "s_waitcnt_expcnt" &&
+      name != "s_waitcnt_vscnt")
+    return nullptr;
+  const Operand *op = inst.src_operand(0);
+  return op && !scalar_selector_is_null(arch, op->encoding_value()) ? op : nullptr;
+}
+
+util::FailureOr<std::optional<WaitFields>>
 WaitCounterPolicy::explicit_wait_fields(const Instruction &inst, rj_code_arch_t arch) {
+  return explicit_wait_fields(inst, arch, {});
+}
+
+[[nodiscard]] util::FailureOr<std::optional<WaitFields>>
+WaitCounterPolicy::explicit_wait_fields(const Instruction &inst, rj_code_arch_t arch,
+                                        std::span<const uint32_t> relative_scalar_values) {
   const auto model = waitcnt_model(arch);
   if (model.failed())
     return util::Result::failure();
@@ -161,14 +182,26 @@ WaitCounterPolicy::explicit_wait_fields(const Instruction &inst, rj_code_arch_t 
     const auto value = operand_value(1);
     if (!value)
       return std::nullopt;
+    WaitCounterKind counter = WaitCounterKind::Ds;
     if (mnemonic == "s_waitcnt_vmcnt")
-      set_field(WaitCounterKind::Load, *value);
+      counter = WaitCounterKind::Load;
     else if (mnemonic == "s_waitcnt_vscnt")
-      set_field(WaitCounterKind::Store, *value);
+      counter = WaitCounterKind::Store;
     else if (mnemonic == "s_waitcnt_expcnt")
-      set_field(WaitCounterKind::Exp, *value);
-    else
-      set_field(WaitCounterKind::Ds, *value);
+      counter = WaitCounterKind::Exp;
+    uint32_t threshold = *value;
+    if (arch == ROCJITSU_CODE_ARCH_RDNA1 || arch == ROCJITSU_CODE_ARCH_RDNA2) {
+      const auto mask = *counter_no_wait_value(arch, counter).value();
+      threshold = relative_wait_threshold(0, *value, mask);
+      if (relative_wait_operand(inst, arch)) {
+        if (relative_scalar_values.empty())
+          return fields;
+        threshold = 0;
+        for (uint32_t scalar : relative_scalar_values)
+          threshold = std::max(threshold, relative_wait_threshold(scalar, *value, mask));
+      }
+    }
+    set_field(counter, threshold);
     return fields;
   }
 

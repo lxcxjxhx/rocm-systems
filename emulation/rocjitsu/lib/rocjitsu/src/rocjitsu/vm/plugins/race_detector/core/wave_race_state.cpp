@@ -48,6 +48,27 @@ void WaveRaceState::dispatch(const PendingWaitCount &wait_count) {
     applyWaitCounter(update.type, update.threshold);
 }
 
+void WaveRaceState::recordOpaqueCounterCredit(amdgpu::WaitCounterType type, MemoryOrderClass order,
+                                              uint8_t increment) {
+  assert(increment != 0);
+  if (order != MemoryOrderClass::UNORDERED)
+    orderedIssueEnd[static_cast<size_t>(orderedCounterFor(type))][static_cast<size_t>(order)] +=
+        increment;
+  const auto counter = orderedCounterFor(type);
+  auto &credits = opaqueCounterCredits[static_cast<size_t>(counter)];
+  credits = static_cast<uint8_t>(
+      std::min<int>(doNotWaitValue(counter), static_cast<int>(credits) + increment));
+}
+
+unsigned WaveRaceState::pendingOpaqueCounterCredits(amdgpu::WaitCounterType type) const {
+  type = orderedCounterFor(type);
+  unsigned pending = 0;
+  for (size_t i = 0; i < opaqueCounterCredits.size(); ++i)
+    if (amdgpu::wait_counter_covers(type, static_cast<amdgpu::WaitCounterType>(i)))
+      pending += opaqueCounterCredits[i];
+  return pending;
+}
+
 void WaveRaceState::registerEvent(InstructionSnapshot instruction, MemoryEventType type,
                                   std::vector<uint32_t> regIds, uint64_t execMask,
                                   uint8_t byteMask) {
@@ -96,7 +117,8 @@ void WaveRaceState::registerEventWithIntervals(
     InstructionSnapshot instruction, MemoryEventType type, std::vector<uint32_t> regIds,
     uint64_t execMask, uint8_t byteMask, IntervalSet ldsIntervals,
     std::span<const amdgpu::MemoryCounterObligation> counterObligations,
-    MemoryOrderClass memoryOrder, uint8_t lastRegisterByteMask, LdsAccess ldsAccess) {
+    MemoryOrderClass memoryOrder, uint8_t lastRegisterByteMask, LdsAccess ldsAccess,
+    std::optional<MemoryOrderClass> registerWriteOrder) {
   bool toSgpr = isToSgpr(type);
   bool toTtmp = isToTtmp(type);
   const size_t register_limit = toSgpr   ? sgprMemoryEvents.size()
@@ -104,9 +126,21 @@ void WaveRaceState::registerEventWithIntervals(
                                          : vgprMemoryEvents.size();
   if (std::ranges::any_of(regIds, [register_limit](uint32_t reg) { return reg >= register_limit; }))
     return;
-  auto eventId = detector->allocateEventId(waveId, instruction, type, std::move(regIds), execMask,
-                                           byteMask, std::move(ldsIntervals), counterObligations,
-                                           memoryOrder, lastRegisterByteMask, ldsAccess);
+  std::array<uint64_t, amdgpu::MemoryIssueInfo::MAX_COUNTER_OBLIGATIONS> issueEnd{};
+  for (size_t i = 0; i < counterObligations.size(); ++i) {
+    const auto &obligation = counterObligations[i];
+    if (obligation.completion_class() == MemoryOrderClass::UNORDERED)
+      continue;
+    auto &end =
+        orderedIssueEnd[static_cast<size_t>(orderedCounterFor(obligation.wait_counter_type()))]
+                       [static_cast<size_t>(obligation.completion_class())];
+    end += obligation.counter_increment();
+    issueEnd[i] = end;
+  }
+  auto eventId = detector->allocateEventId(
+      waveId, instruction, type, std::move(regIds), execMask, byteMask, std::move(ldsIntervals),
+      counterObligations, memoryOrder, lastRegisterByteMask, ldsAccess,
+      std::span(issueEnd).first(counterObligations.size()), registerWriteOrder);
   for (uint32_t reg : detector->events().registers(eventId)) {
     if (toSgpr) {
       sgprMemoryEvents[reg].push_back(eventId);
@@ -128,6 +162,16 @@ amdgpu::WaitCounterType WaveRaceState::capacityCounterFor(amdgpu::WaitCounterTyp
   if (amdgpu::wait_counter_covers(amdgpu::WaitCounterType::VMCNT, type))
     return amdgpu::WaitCounterType::VMCNT;
   if (amdgpu::wait_counter_covers(amdgpu::WaitCounterType::LGKMCNT, type))
+    return amdgpu::WaitCounterType::LGKMCNT;
+  return type;
+}
+
+amdgpu::WaitCounterType WaveRaceState::orderedCounterFor(amdgpu::WaitCounterType type) const {
+  if (counterCapacities.vmcnt > 0 &&
+      amdgpu::wait_counter_covers(amdgpu::WaitCounterType::VMCNT, type))
+    return amdgpu::WaitCounterType::VMCNT;
+  if (counterCapacities.lgkmcnt > 0 &&
+      amdgpu::wait_counter_covers(amdgpu::WaitCounterType::LGKMCNT, type))
     return amdgpu::WaitCounterType::LGKMCNT;
   return type;
 }
@@ -366,9 +410,35 @@ void WaveRaceState::applyWaitCounter(amdgpu::WaitCounterType type, int threshold
   if (threshold < 0 || threshold == doNotWaitValue(type))
     return;
 
+  // A partial wait bounds total occupancy, including opaque counter credits.
+  // Keep their count bounded while the class issue positions preserve their
+  // order relative to real requests. A zero wait clears them all.
+  const auto orderedCounter = orderedCounterFor(type);
+  for (size_t i = 0; i < opaqueCounterCredits.size(); ++i)
+    if (amdgpu::wait_counter_covers(orderedCounter, static_cast<amdgpu::WaitCounterType>(i)))
+      opaqueCounterCredits[i] =
+          static_cast<uint8_t>(std::min<int>(opaqueCounterCredits[i], threshold));
+
   if (threshold == 0) {
     applyCounterConstraint(type, 0, /*includeUnordered=*/true);
     return;
+  }
+
+  const size_t counter = static_cast<size_t>(orderedCounterFor(type));
+  for (MemoryOrderClass order :
+       {MemoryOrderClass::VMEM, MemoryOrderClass::LDS, MemoryOrderClass::GDS,
+        MemoryOrderClass::ASYNC_LOAD, MemoryOrderClass::ASYNC_STORE, MemoryOrderClass::TENSOR}) {
+    const uint64_t issued = orderedIssueEnd[counter][static_cast<size_t>(order)];
+    if (issued <= static_cast<uint64_t>(threshold))
+      continue;
+    const uint64_t completedThrough = issued - threshold;
+    auto provedByWait = [&](EventId eventId) {
+      if (detector->events().pendingCompletionClass(eventId, type) != order)
+        return false;
+      const auto end = detector->events().pendingCounterIssueEnd(eventId, type);
+      return end && *end != 0 && *end <= completedThrough;
+    };
+    satisfyOldestCounterObligations(std::numeric_limits<int>::max(), type, provedByWait);
   }
 
   applyCounterConstraint(type, threshold, /*includeUnordered=*/false);
@@ -435,7 +505,7 @@ void WaveRaceState::checkVgprWrite(int reg, uint64_t execMask, uint8_t byteMask,
                                    MemoryOrderClass currentMemoryOrder) const {
   for (EventId eventId : vgprMemoryEvents[reg]) {
     const MemoryEventType pendingType = detector->events().type(eventId);
-    const MemoryOrderClass pendingOrder = detector->events().memoryOrder(eventId);
+    const MemoryOrderClass pendingOrder = detector->events().registerWriteOrder(eventId);
     const bool orderedWithCurrent =
         currentMemoryOrder != MemoryOrderClass::UNORDERED && pendingOrder == currentMemoryOrder;
     if (!isToVgpr(pendingType) || orderedWithCurrent ||

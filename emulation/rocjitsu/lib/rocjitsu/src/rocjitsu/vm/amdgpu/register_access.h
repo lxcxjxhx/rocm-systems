@@ -25,6 +25,7 @@
 
 #include "rocjitsu/isa/arch/amdgpu/shared/block_memory.h"
 #include "rocjitsu/isa/arch/amdgpu/shared/scalar_operand_selectors.h"
+#include "rocjitsu/isa/arch/amdgpu/shared/wait_counter_policy.h"
 #include "rocjitsu/isa/operand.h"
 #include "rocjitsu/result.h"
 #include "rocjitsu/vm/amdgpu/compute_unit.h"
@@ -1067,6 +1068,30 @@ public:
     uint32_t reg_count_ = 0;
     bool valid_ = false;
   };
+
+  /// GFX10 SOPK waits read a scalar selector and add its value to the encoded threshold.
+  [[nodiscard]] static util::FailureOr<std::optional<WaitFields>>
+  explicit_wait_fields(const Instruction &inst, rj_code_arch_t arch, const Wavefront *wf) {
+    if (wf) {
+      if (const Operand *source = WaitCounterPolicy::relative_wait_operand(inst, arch)) {
+        // On GFX10, SGPR and TTMP operand reads notify plugins. Preflight runs
+        // before their instruction callback, and execution will report the actual read.
+        const uint32_t selector = source->encoding_value();
+        uint32_t value;
+        if (selector <= kScalarSgprSelectorLast) {
+          const auto reg = wf->sgpr_alloc().base + selector;
+          const RegisterAccess access(*wf);
+          value = access.owns_sgpr_range(reg, 1) ? access.cu_->read_sgpr_storage(reg) : 0;
+        } else if (selector >= kTtmpSelectorFirst && selector <= kTtmpSelectorLast) {
+          value = wf->shader_can_access_ttmp() ? wf->ttmp(selector - kTtmpSelectorFirst) : 0;
+        } else {
+          value = source->read_scalar(*wf);
+        }
+        return WaitCounterPolicy::explicit_wait_fields(inst, arch, std::span(&value, 1));
+      }
+    }
+    return WaitCounterPolicy::explicit_wait_fields(inst, arch);
+  }
 
   explicit RegisterAccess(ComputeUnitCore &cu) : cu_(&cu), mutable_cu_(&cu) {}
   explicit RegisterAccess(const ComputeUnitCore &cu) : cu_(&cu) {}

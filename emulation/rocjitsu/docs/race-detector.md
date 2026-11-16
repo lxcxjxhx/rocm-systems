@@ -289,16 +289,21 @@ following lifecycle:
    still pending, such as a global load waiting on `loadcnt`, keeps every
    later retired event in the registry.
 
-Generic `FLAT_*` instructions select counter domains from their resolved memory
-requests. Global and scratch requests use the vector-memory counter; LDS
-requests use the LDS counter. An instruction with requests in both domains uses
-both counters. The runtime applies this conditional-participation model across
-AMD GPU targets, for loads, stores and atomics. Validation on every physical GPU
+An active generic `FLAT_*` instruction occupies both vector-memory and LDS
+counter positions. On all targets, each returned lane follows its resolved
+route. With legacy counters, a global-only result is ready after `vmcnt(0)`,
+even while its unused LGKMCNT position remains. Gfx1250 uses the corresponding
+LOADCNT or DSCNT wait. An unused pre-gfx1250 credit alone does not prove that
+older work completed through counter-capacity pressure. The detector keeps
+these unused credits in bounded per-counter state, capped by the counter's
+capacity; a partial wait tightens that bound and a zero wait clears it.
+Ordered-class issue positions also include the credits, so partial waits can
+prove completion of older requests without treating the credits as capacity
+eligible. No race event is allocated for each unused credit.
+Empty-EXEC admission is target-specific. Validation on every physical GPU
 architecture is not established.
 
-For uniform requests, the race detector uses only the selected memory domain.
-For example, on gfx950 with global addresses in every requesting lane, this use
-of `v8` has a sufficient wait:
+For example, gfx950's ROCr copy uses a global-only FLAT result after `vmcnt(0)`:
 
 ```asm
 flat_load_dword v8, v[0:1]
@@ -306,30 +311,25 @@ s_waitcnt vmcnt(0)
 flat_store_dword v[2:3], v8
 ```
 
-LDS-only loads instead require `lgkmcnt(0)`. Newer targets use their corresponding
-split counters. Routing preserves decoded completion ordering and the VMEM/DS
-obligations used by the requests. Generated VMEM/FLAT stores and atomics do not
-carry an EXP completion obligation. In particular, CDNA4 FLAT completion stays
-unordered; a nonzero wait cannot prove a result ready.
+An LDS-only gfx950 FLAT result follows LGKMCNT. Mixed-route returned lanes
+require both waits to cover the whole result. Newer targets use their
+corresponding split counters. Routing preserves decoded completion ordering and
+the obligations required by each target. Generated VMEM/FLAT stores and atomics
+do not carry an EXP completion obligation. CDNA4 FLAT completion stays unordered;
+a nonzero wait cannot prove a result ready.
 
-Functional counter acquisition and the core memory-wait checker use the selected
-memory domains. So does the race detector on the pre-GFX12 capacity targets
-(CDNA1 through CDNA4 and GFX11): it applies FLAT capacity constraints after
-addresses are resolved, because before the address operands are read, neither
-domain is guaranteed to need a counter slot. On those targets, a full LDS
-counter followed by a global-only FLAT therefore cannot prove an older LDS
-result complete. On gfx1250, every FLAT instruction increments both DScnt and
+The core checker and race detector apply pre-gfx1250 FLAT capacity constraints
+after checking address operands and resolving requests. An incoming FLAT cannot
+prove an older address result ready before that read. On gfx1250, every FLAT
+instruction increments both DScnt and
 LOADcnt or STOREcnt when it issues (CDNA5 ISA 5.7.1.3), and the race detector
 counts it on both; see the gfx1250 capacity model below.
 
-A mixture of global and scratch lanes uses the same VMEM domain. Mixed LDS/global
-observations still attach both obligations to the whole race-plugin event, so a
-consumer restricted to an already-completed lane group can still get a false
-report. `TODO(newling)` regression cases track this remaining #12237 gap. The
-core checker's [FLAT register-readiness policy](memory-wait-counter-coverage.md#flat-register-readiness)
-tracks the groups separately. Functional execution splits mixed requests by
-address space, completing retryable global/scratch work before accessing LDS.
-The race plugin retains both counter obligations on its single mixed event.
+A mixture of global and scratch lanes uses the same VMEM domain. The race plugin and
+the core checker's [FLAT register-readiness policy](memory-wait-counter-coverage.md#flat-register-readiness)
+track the LDS and global lane groups separately. Functional execution splits
+mixed requests by address space, completing retryable global/scratch work before
+accessing LDS.
 LDS validation and interval registration are bounded by the CU backing capacity.
 For RDNA4 FLAT LDS, they also stop at the captured workgroup allocation end,
 retaining only complete memory elements; a lane whose first element does not fit
@@ -400,9 +400,19 @@ s_waitcnt_lgkmcnt null, 0      ; standalone LGKMCNT form
 Counter-capacity backpressure is modeled for the VMCNT and LGKMCNT domains on
 CDNA1 through CDNA4 and GFX11. CDNA uses a four-bit LGKMCNT and six-bit VMCNT;
 GFX11 uses six-bit fields for both. GFX11 vector stores use the separate VSCNT
-domain and therefore do not create VMCNT pressure. Generic FLAT applies the
-capacity constraints of the domains its addresses resolve to, once they are
-resolved.
+domain and therefore do not create VMCNT pressure. An active generic FLAT
+occupies both vector and LDS positions on CDNA1–4 and GFX11 for explicit waits.
+Before gfx1250, the race detector applies capacity constraints after resolving
+addresses; an unused route credit cannot prove completion of older requests.
+
+On CDNA4, a buffer, global or scratch instruction issued with wave EXEC zero
+counts on VMCNT and completes in order with the wave's other vector memory
+instructions (CDNA4 ISA sections 3.3, 4.4 and 10.5). This was measured on
+MI355X for buffer and global loads to VGPRs, buffer and global stores, and
+buffer loads to LDS (ROCm/rocm-systems#15938). Such an instruction applies
+VMCNT backpressure and keeps a slot without registers or LDS bytes. A later
+`s_waitcnt vmcnt(N)` counts that slot. DS and FLAT instructions with EXEC zero
+were not measured on CDNA4, so this rule leaves their behavior unproven.
 
 On gfx1250 it is modeled for each split counter: LOADcnt, STOREcnt, DScnt,
 ASYNCcnt and TENSORcnt are 6-bit counters and KMcnt is a 5-bit counter (the

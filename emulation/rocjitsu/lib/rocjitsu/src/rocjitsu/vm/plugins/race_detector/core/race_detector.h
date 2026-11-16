@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <span>
 #include <utility>
 #include <vector>
@@ -58,7 +59,8 @@ public:
                           IntervalSet ldsIntervals,
                           std::span<const amdgpu::MemoryCounterObligation> counterObligations,
                           MemoryOrderClass memoryOrder, uint8_t lastRegisterByteMask = 0,
-                          LdsAccess ldsAccess = {});
+                          LdsAccess ldsAccess = {}, std::span<const uint64_t> counterIssueEnd = {},
+                          std::optional<MemoryOrderClass> registerWriteOrder = std::nullopt);
 
   /// Transition an event from ACTIVE to WAVE_COMPLETE.
   void markEventWaveComplete(EventId);

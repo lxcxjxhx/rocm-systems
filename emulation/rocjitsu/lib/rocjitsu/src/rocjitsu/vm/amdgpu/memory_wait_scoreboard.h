@@ -4,13 +4,14 @@
 #pragma once
 
 #include "rocjitsu/base/rj_compiler.h"
-#include "rocjitsu/code/analysis/waitcheck/target.h"
 #include "rocjitsu/isa/arch/amdgpu/cdna3/sgpr_layout.h"
 #include "rocjitsu/isa/register_set.h"
+#include "rocjitsu/vm/amdgpu/runtime_wait_target.h"
 
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <span>
 #include <vector>
@@ -60,9 +61,9 @@ public:
     return kRegisters;
   }
   static constexpr uint8_t kResult = 1;
-  static constexpr uint8_t kReplaySource = 2;
+  static constexpr uint8_t kSource = 2;
   bool test(size_t i, bool write = false) const {
-    return i < kRegisters && (bytes_[i] & (write ? kResult | kReplaySource : kResult));
+    return i < kRegisters && (bytes_[i] & (write ? kResult | kSource : kResult));
   }
   bool pending_vgpr(uint16_t index, uint8_t width) const {
     assert(index + width <= REGISTER_SET_MAX_VGPRS);
@@ -139,6 +140,7 @@ public:
   static constexpr uint16_t kUnordered = UINT16_MAX;
   explicit MemoryWaitScoreboard(MemoryWaitShadow &shadow) : pending_(shadow) {
     last_order_.fill(kUnordered);
+    last_capacity_eligible_.fill(false);
   }
   struct Event {
     uint64_t sequence;
@@ -150,11 +152,34 @@ public:
     bool reported = false;
     uint16_t order = kUnordered;
     uint64_t order_sequence = 0;
+    uint64_t capacity_order_sequence = 0;
     // Whether this pending result can be overwritten without a wait by a later
     // load in the same order class. That also requires the incoming load to
     // qualify for ordered writeback (see access_pending). Results whose counter
     // decrements in order are not necessarily written to registers in order.
     bool ordered_overwrite = true;
+    bool export_source = false;
+    bool valu_source = false;
+    uint8_t wmma_wait_states = 0;
+    uint64_t preceding_core_valu = 0;
+    // An async transfer's possible replay source uses its ASYNC completion
+    // position. It contributes no proven credit to the ordered X queue.
+    bool async_replay_source = false;
+    bool atomic_replay_source = false;
+    // Only an active, actually issued native GFX10 DS request can release its
+    // scalar source lock when the DS completion counter fully drains.
+    bool gfx10_native_ds_source = false;
+    bool gfx10_native_ds_issued = false;
+    bool protects_replay_source() const {
+      return counter == WaitCounterKind::X || async_replay_source;
+    }
+    bool protects_source() const {
+      return protects_replay_source() || export_source || counter == WaitCounterKind::VmVsrc ||
+             valu_source;
+    }
+    uint8_t shadow_bits() const {
+      return protects_source() ? MemoryWaitShadow::kSource : MemoryWaitShadow::kResult;
+    }
   };
   struct Hazard {
     Event producer;
@@ -170,16 +195,39 @@ public:
   /// Cancel the latest instruction's dependency and counter positions before
   /// debugger replay, preserving older producers and coalesced source records.
   bool cancel_last_issue(uint64_t pc, std::span<const WaitCounterType> counters,
-                         rj_code_arch_t arch, bool xcnt);
-  using IssueSnapshot = std::array<uint64_t, static_cast<size_t>(WaitCounterKind::Count)>;
+                         rj_code_arch_t arch, bool xcnt, bool vm_vsrc = false);
+  struct IssueSnapshot {
+    std::array<uint64_t, static_cast<size_t>(WaitCounterKind::Count)> issued;
+  };
   /// Capture positions before tracking one instruction. No further instruction
   /// may issue before cancelling that instruction with this snapshot.
-  IssueSnapshot issue_snapshot() const { return issued_; }
+  IssueSnapshot issue_snapshot() const { return {issued_}; }
   bool cancel_last_issue(uint64_t pc, const IssueSnapshot &before);
-  void before(const Instruction &inst, rj_code_arch_t arch);
+  bool issues_flat_counter(const Instruction &inst, Wavefront &wf, uint64_t requests,
+                           uint64_t returned_without_request, WaitCounterKind counter) const;
+  void before(const Instruction &inst, rj_code_arch_t arch, Wavefront *wf = nullptr);
+  void track_gfx10_scalar_sources(const Instruction &inst, Wavefront &wf,
+                                  const waitcheck_detail::ClassifiedEvent &source);
+  void confirm_gfx10_native_ds_source_issue(uint64_t pc);
   /// Return whether address preparation can change which lanes supply VDATA.
   static bool needs_buffer_payload_lanes(const Instruction &inst, rj_code_arch_t arch);
   void check_instruction(const Instruction &inst, Wavefront &wf);
+  struct SourceRoute {
+    WaitCounterKind counter = WaitCounterKind::Count;
+    uint64_t sequence = 0;
+    uint64_t lanes = 0;
+    uint16_t order = kUnordered;
+    uint64_t order_sequence = 0;
+    uint64_t capacity_order_sequence = 0;
+  };
+  [[nodiscard]] SourceRoute source_route(WaitCounterKind counter, uint64_t sequence,
+                                         uint64_t lanes) const;
+  void track_expert_vm_sources(const Instruction &inst, Wavefront &wf,
+                               const waitcheck_detail::ClassifiedEvent &event,
+                               std::span<const SourceRoute> routes);
+  void leave_expert_scheduling();
+  void track_expert_valu(const Instruction &inst, Wavefront &wf,
+                         waitcheck_detail::WaitEventKind kind, rj_code_target_id_t target);
   struct MemoryLanes {
     uint64_t issue;
     uint64_t result;
@@ -190,10 +238,13 @@ public:
   struct FlatLanes {
     uint64_t requests;
     uint64_t shared;
+    uint64_t private_oob_results;
   };
   static FlatLanes flat_lanes(const Instruction &inst, Wavefront &wf, uint64_t shared_base,
                               uint64_t shared_limit);
   /// X has one translation group at a time, independent of completion queues.
+  void check_prefetch_xcnt() const;
+  void check_atomic_xcnt() const;
   void xcnt_group(bool scalar);
   /// Map translation to this instruction's completion position, if it received one.
   uint64_t issue_xcnt(std::optional<WaitCounterKind> completion, bool scalar);
@@ -201,9 +252,9 @@ public:
   void xcnt_ordered_write(RegisterRef reg, uint64_t lanes, uint8_t bytes);
   /// Count every operation, including stores without a register destination.
   uint64_t issue(WaitCounterKind counter, bool unordered = false, uint32_t ordering_kind = 0,
-                 uint32_t units = 1, bool backpressure_ordered = true);
+                 uint32_t units = 1, bool capacity_eligible = true);
   uint64_t issue(const waitcheck_detail::ClassifiedEvent &event, rj_code_arch_t arch,
-                 uint32_t units = 1);
+                 uint32_t units = 1, bool capacity_eligible = true);
   /// Use the same decoded counter units for admission and issue accounting.
   static uint32_t issue_units(const Instruction &inst,
                               const waitcheck_detail::ClassifiedEvent &event, rj_code_arch_t arch);
@@ -240,6 +291,9 @@ private:
   static constexpr size_t kRegisters = MemoryWaitShadow::kRegisters;
   static size_t index(RegisterRef reg) { return MemoryWaitShadow::index(reg); }
 
+  template <typename Visit>
+  void visit_register_accesses(const Instruction &inst, Wavefront &wf, Visit &&visit,
+                               bool check_result = true);
   [[gnu::cold]] RJ_NOINLINE void check_instruction_pending(const Instruction &inst, Wavefront &wf);
   void check_memory_result(const Instruction &inst, Wavefront &wf, uint64_t vector_lanes,
                            const RegisterModifiers &modifiers);
@@ -248,9 +302,11 @@ private:
   void rebuild_mask();
   void clear_destination(const Event &event);
   void retire_completed();
+  void wait_ordered_xcnt(uint32_t threshold);
+  bool drain_async_replay();
   bool apply_wait(WaitCounterKind counter, uint32_t threshold);
   bool completed(WaitCounterKind counter, uint64_t sequence, uint16_t order,
-                 uint64_t order_sequence) const;
+                 uint64_t order_sequence, uint64_t capacity_order_sequence) const;
   void stamp_order(Event &event) const;
   uint32_t required_wait(const Event &event) const;
   std::array<uint64_t, kCounters> issued_{};
@@ -262,20 +318,28 @@ private:
     uint32_t kind;
     uint64_t issued = 0;
     uint64_t retired = 0;
+    uint64_t capacity_issued = 0;
+    uint64_t capacity_retired = 0;
   };
   // Counter membership is not completion order. Only operations in the same
   // ordered class can prove that an old result must have completed.
+  const Order *expert_core_valu_order() const;
   std::vector<Order> orders_;
   std::array<uint16_t, kCounters> last_order_{};
+  std::array<bool, kCounters> last_capacity_eligible_{};
   bool xcnt_scalar_ = false;
+  uint64_t async_replay_drained_ = 0;
   struct Translation {
     uint64_t sequence;
     uint64_t completion_sequence;
     WaitCounterKind completion;
     uint16_t order;
     uint64_t order_sequence;
+    uint64_t capacity_order_sequence;
   };
   std::vector<Translation> translations_;
+  std::map<uint64_t, std::array<SourceRoute, 2>> expert_source_completions_;
+  bool checking_valu_ = false;
   bool pending_scalar_ = false;
   // Once two events share a shadow slot, retirement must restore overlapping
   // entries until the wave has no pending events. Lane/byte disjointness does

@@ -9505,12 +9505,12 @@ def test_buffer_payload_read_exec_policy_is_profile_owned(
         num_elems=1,
     )
 
-    for body in (
-        codegen._gen_buffer_store([], [], store),
-        codegen._gen_buffer_atomic([], [], atomic),
-    ):
-        assert f'uint64_t exec = {expected_exec};' in body
-        assert f'uint64_t exec = {unexpected_exec};' not in body
+    store_body = codegen._gen_buffer_store([], [], store)
+    atomic_body = codegen._gen_buffer_atomic([], [], atomic)
+    assert f'uint64_t exec = {expected_exec};' in store_body
+    assert f'uint64_t exec = {unexpected_exec};' not in store_body
+    assert f'uint64_t exec = d->nullified_result ? 0 : {expected_exec};' in atomic_body
+    assert f'uint64_t exec = {unexpected_exec};' not in atomic_body
 
 
 def test_gfx1250_buffer_u64_atomic_payload_width_uses_two_dwords():

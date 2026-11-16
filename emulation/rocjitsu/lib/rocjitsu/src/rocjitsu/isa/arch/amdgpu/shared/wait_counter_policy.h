@@ -12,10 +12,12 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <span>
 #include <string_view>
 
 namespace rocjitsu {
 class Instruction;
+class Operand;
 } // namespace rocjitsu
 
 namespace rocjitsu::amdgpu {
@@ -279,10 +281,17 @@ struct WaitCounterPolicy {
   counter_no_wait_value(rj_code_arch_t arch, WaitCounterKind counter);
 
   // Absent fields leave their counters unchanged. An engaged result with no
-  // active fields represents an explicit no-wait sentinel.
-  // SOPK forms currently use only SIMM16; SGPR addends are not modeled.
+  // active fields can also mean a GFX10 SOPK scalar operand is unresolved.
+  // Supply the reaching SGPR values to compute its guaranteed threshold.
   [[nodiscard]] static util::FailureOr<std::optional<WaitFields>>
   explicit_wait_fields(const Instruction &inst, rj_code_arch_t arch);
+  [[nodiscard]] static util::FailureOr<std::optional<WaitFields>>
+  explicit_wait_fields(const Instruction &inst, rj_code_arch_t arch,
+                       std::span<const uint32_t> relative_scalar_values);
+  /// GFX10 SOPK waits compare against (SGPR + SIMM16) modulo the counter width.
+  /// The null selector contributes zero and needs no register lookup.
+  [[nodiscard]] static const Operand *relative_wait_operand(const Instruction &inst,
+                                                            rj_code_arch_t arch);
 
   [[nodiscard]] static uint32_t depctr_field(uint32_t value, uint32_t shift, uint32_t width);
 };

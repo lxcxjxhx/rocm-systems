@@ -206,7 +206,7 @@ public:
   /// @brief Report only conditions explicitly undefined for the executing architecture.
   void report_undefined_behavior(const Wavefront &wf, std::string_view reason);
   /// @brief Register a producer using planned FLAT lanes before execution.
-  void track_memory_wait(Instruction &inst, Wavefront &wf);
+  bool track_memory_wait(Instruction &inst, Wavefront &wf);
   /// @brief Format a scoreboard hazard using its owning wavefront context.
   static void report_memory_wait(void *context, const MemoryWaitScoreboard::Hazard &hazard);
 
@@ -1191,7 +1191,8 @@ public:
 
 private:
   static bool nullify_unallocated_memory_result(Instruction &inst, const Wavefront &wf);
-  VmAccessOutcome route_prepared_memory_inst(std::unique_ptr<Instruction> &&inst, Wavefront &wf);
+  VmAccessOutcome route_prepared_memory_inst(std::unique_ptr<Instruction> &&inst, Wavefront &wf,
+                                            bool vm_source_issued);
 
   // RegisterAccess is the instruction-facing register boundary. These
   // ownership and SGPR access helpers validate the complete operation, fire
@@ -1577,7 +1578,8 @@ public:
       if (failure_detail)
         *failure_detail = error.what();
     }
-    if (config_.arch == ROCJITSU_CODE_ARCH_RDNA4 && inst->data())
+    if ((config_.arch == ROCJITSU_CODE_ARCH_RDNA4 || config_.arch == ROCJITSU_CODE_ARCH_CDNA5) &&
+        inst->data())
       nullify_unallocated_memory_result(*inst, wf);
     if (preserve_scc)
       wf.write_scc(saved_scc);
@@ -1687,7 +1689,8 @@ protected:
   /// @param inst Ownership transfers when the pipeline accepts the instruction.
   /// Rejected instructions stay with the issuer until it reports the failure.
   /// @param wf The issuing wavefront.
-  VmAccessOutcome route_memory_inst(std::unique_ptr<Instruction> &&inst, Wavefront &wf);
+  VmAccessOutcome route_memory_inst(std::unique_ptr<Instruction> &&inst, Wavefront &wf,
+                                   bool vm_source_issued = false);
 
   [[nodiscard]] bool owns_memory_result_vgprs(const Wavefront &wf, uint32_t base,
                                               uint32_t count) const {

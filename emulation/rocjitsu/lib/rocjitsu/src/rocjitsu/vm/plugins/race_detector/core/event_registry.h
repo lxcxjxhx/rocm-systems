@@ -44,9 +44,11 @@ class EventRegistry {
     MemoryEventType type;
     std::array<amdgpu::MemoryCounterObligation, amdgpu::MemoryIssueInfo::MAX_COUNTER_OBLIGATIONS>
         counterObligations;
+    std::array<uint64_t, amdgpu::MemoryIssueInfo::MAX_COUNTER_OBLIGATIONS> counterIssueEnd;
     uint8_t numCounterObligations;
     uint8_t satisfiedCounterMask;
     MemoryOrderClass memoryOrder;
+    MemoryOrderClass registerWriteOrder;
     EventStatus status;
     uint8_t byteMask;
     uint8_t lastRegisterByteMask;
@@ -63,18 +65,22 @@ public:
               IntervalSet ldsIntervals,
               std::span<const amdgpu::MemoryCounterObligation> counterObligations,
               MemoryOrderClass memoryOrder, uint8_t lastRegisterByteMask = 0,
-              LdsAccess ldsAccess = {}) {
+              LdsAccess ldsAccess = {}, std::span<const uint64_t> counterIssueEnd = {},
+              std::optional<MemoryOrderClass> registerWriteOrder = std::nullopt) {
     int id = base_offset_ + static_cast<int>(entries_.size());
     assert(!counterObligations.empty() ||
            (isFromLds(type) && registers.empty() && !ldsIntervals.empty()));
     assert(counterObligations.size() <= amdgpu::MemoryIssueInfo::MAX_COUNTER_OBLIGATIONS);
+    assert(counterIssueEnd.empty() || counterIssueEnd.size() == counterObligations.size());
     EventInfo event{waveId,
                     instruction,
                     type,
                     {},
+                    {},
                     static_cast<uint8_t>(counterObligations.size()),
                     0,
                     memoryOrder,
+                    registerWriteOrder.value_or(memoryOrder),
                     counterObligations.empty() ? EventStatus::WAVE_COMPLETE : EventStatus::ACTIVE,
                     byteMask,
                     lastRegisterByteMask ? lastRegisterByteMask : byteMask,
@@ -83,6 +89,7 @@ public:
                     std::move(ldsIntervals),
                     ldsAccess};
     std::ranges::copy(counterObligations, event.counterObligations.begin());
+    std::ranges::copy(counterIssueEnd, event.counterIssueEnd.begin());
     entries_.push_back(std::move(event));
 
     // To prevent the number of events recorded growing indefinitely, we try to
@@ -124,6 +131,23 @@ public:
     }
     return std::nullopt;
   }
+  /// The end of the pending obligation's position in its ordered class.
+  /// A covered multi-obligation event is left unproved here so that a wait
+  /// cannot retire an unrelated obligation through a shared counter alias.
+  std::optional<uint64_t> pendingCounterIssueEnd(EventId id,
+                                                 amdgpu::WaitCounterType waitType) const {
+    const auto &event = entries_[index(id)];
+    std::optional<uint64_t> result;
+    for (uint8_t i = 0; i < event.numCounterObligations; ++i) {
+      if ((event.satisfiedCounterMask & (uint8_t{1} << i)) != 0 ||
+          !amdgpu::wait_counter_covers(waitType, event.counterObligations[i].wait_counter_type()))
+        continue;
+      if (result)
+        return std::nullopt;
+      result = event.counterIssueEnd[i];
+    }
+    return result;
+  }
   uint8_t pendingCounterIncrement(EventId id, amdgpu::WaitCounterType waitType) const {
     const auto &event = entries_[index(id)];
     for (uint8_t i = 0; i < event.numCounterObligations; ++i) {
@@ -159,6 +183,9 @@ public:
     return event.ldsAccess.read_modify_write || isToLds(event.type);
   }
   MemoryOrderClass memoryOrder(EventId id) const { return entries_[index(id)].memoryOrder; }
+  MemoryOrderClass registerWriteOrder(EventId id) const {
+    return entries_[index(id)].registerWriteOrder;
+  }
   EventStatus status(EventId id) const { return entries_[index(id)].status; }
   bool isTrimmable(EventId id) const { return isEntryTrimmable(entries_[index(id)]); }
   const InstructionSnapshot &instruction(EventId id) const {

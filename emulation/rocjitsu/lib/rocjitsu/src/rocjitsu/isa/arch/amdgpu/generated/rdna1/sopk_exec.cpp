@@ -128,24 +128,31 @@ void SCallB64Sopk::execute_impl(amdgpu::Wavefront &wf) {
 }
 
 void SWaitcntVscntSopk::execute_impl(amdgpu::Wavefront &wf) {
-  uint16_t cnt = static_cast<uint16_t>(simm16.encoding_value_);
-  wf.set_wait_target_vscnt(static_cast<uint8_t>(cnt));
+  const auto threshold = amdgpu::relative_wait_threshold(
+      amdgpu::RegisterAccess(wf).read_scalar(sdst), static_cast<uint32_t>(simm16.encoding_value_),
+      amdgpu::WaitCounters::VSCNT_MAX);
+  wf.wait_for({.vscnt = static_cast<uint8_t>(threshold)});
 }
 
 void SWaitcntVmcntSopk::execute_impl(amdgpu::Wavefront &wf) {
-  uint16_t cnt = static_cast<uint16_t>(simm16.encoding_value_);
-  wf.set_wait_target_loadcnt(static_cast<uint8_t>(cnt));
+  const auto threshold = amdgpu::relative_wait_threshold(
+      amdgpu::RegisterAccess(wf).read_scalar(sdst), static_cast<uint32_t>(simm16.encoding_value_),
+      amdgpu::WaitCounters::VMCNT_MAX);
+  wf.wait_for({.vmcnt = static_cast<uint8_t>(threshold)});
 }
 
 void SWaitcntExpcntSopk::execute_impl(amdgpu::Wavefront &wf) {
-  uint16_t cnt = static_cast<uint16_t>(simm16.encoding_value_);
-  wf.set_wait_counter("wait_expcnt", cnt);
+  const auto threshold = amdgpu::relative_wait_threshold(
+      amdgpu::RegisterAccess(wf).read_scalar(sdst), static_cast<uint32_t>(simm16.encoding_value_),
+      amdgpu::WaitCounters::EXPCNT_MAX);
+  wf.wait_for({.expcnt = static_cast<uint8_t>(threshold)});
 }
 
 void SWaitcntLgkmcntSopk::execute_impl(amdgpu::Wavefront &wf) {
-  uint16_t cnt = static_cast<uint16_t>(simm16.encoding_value_);
-  const auto current_wait = wf.wait_target();
-  wf.set_wait_target(current_wait.vmcnt, static_cast<uint8_t>(cnt), current_wait.expcnt);
+  const auto threshold = amdgpu::relative_wait_threshold(
+      amdgpu::RegisterAccess(wf).read_scalar(sdst), static_cast<uint32_t>(simm16.encoding_value_),
+      amdgpu::WaitCounters::LGKMCNT_MAX);
+  wf.wait_for({.lgkmcnt = static_cast<uint8_t>(threshold)});
 }
 
 void SSubvectorLoopBeginSopk::execute_impl(amdgpu::Wavefront &wf) {
