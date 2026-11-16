@@ -21,8 +21,8 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
       * `hipArrayGetSparseProperties` returns the layout properties of a sparse HIP array in a
         `hipArraySparseProperties` structure. Added for source compatibility: AMD devices do not
         support sparse arrays, so it zeroes the structure and returns `hipErrorNotSupported`.
-      * `hipArrayGetPlane` gets a single format plane of a multiplanar HIP array. AMD devices do
-        not support multiplanar arrays, so it validates its arguments and returns
+      * `hipArrayGetPlane` gets a single format plane of a multiplanar HIP array. HIP does not
+        implement multiplanar arrays, so it validates its arguments and returns
         `hipErrorNotSupported`.
 
 ### Resolved issues
