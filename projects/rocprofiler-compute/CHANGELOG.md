@@ -31,9 +31,9 @@ Full documentation for ROCm Compute Profiler is available at [https://rocm.docs.
 
 * On gfx1250, the memory chart table shows the full metric names, for example `LDS Load Instructions` instead of `LDS Load Requests`.
 
-* The L2-Fabric rows on AMD Instinct MI100 and MI200 Series that count bytes say Bytes instead of BW, for example `Write and Atomic Bytes`.
+* Corrected the L2-Fabric row names that count bytes, for example `Write and Atomic Bytes` instead of `Write and Atomic BW`.
 
-* More rows show their full metric names, for example `vL1D Access Latency Cycles` instead of `L1 Access Latency` on AMD Instinct MI350 Series, and `L1-L2 Bandwidth` instead of `L1-L2 BW` on MI300 and MI350 Series.
+* Some metric names are clearer, for example `vL1D Access Latency Cycles` instead of `L1 Access Latency`.
 
 ### Removed
 
