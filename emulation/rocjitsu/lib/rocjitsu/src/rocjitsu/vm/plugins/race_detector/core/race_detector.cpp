@@ -34,6 +34,8 @@ RaceDetector::RaceDetector(int nWaves, int vgprCount, int sgprCount, Dim3d workg
   // With no other wave, nothing holds back retirement.
   covered_.assign(nWaves, nWaves == 1 ? std::numeric_limits<uint32_t>::max() : 0);
   atCoverage_.assign(nWaves, nWaves - 1);
+  staleCoverage_.assign(nWaves, false);
+  liveWaves_ = nWaves;
 }
 
 WaveRaceState &RaceDetector::getWaveRaceState(int waveIndex) {
@@ -134,6 +136,7 @@ void RaceDetector::barrierRoundCompleted(BarrierRoundId round, std::span<const W
 }
 
 void RaceDetector::barrierWaitPassed(WaveId wave, BarrierRoundId round) {
+  refreshStaleCoverage();
   if (BarrierRoundState *state = findRound(round); state && state->completed)
     acquire(wave, state->clock);
   // The wave's completion bit is now clear. It never waits for another round
@@ -148,10 +151,31 @@ void RaceDetector::waveEnded(WaveId wave) {
       std::span(acquired_).subspan(static_cast<size_t>(wave.value) * waveCount(), waveCount());
   joinClock(exitClock_, row);
   stopAwaiting(wave, std::nullopt);
-  // The ended wave no longer holds back any other wave's retirement.
-  for (int owner = 0; owner < waveCount(); ++owner)
-    if (owner != wave.value && acquired(wave, WaveId{owner}) == covered_[owner])
-      leaveCoverageMinimum(wave, WaveId{owner});
+  --liveWaves_;
+  // The ended wave no longer holds back any other wave's retirement. Where it
+  // was the last wave at an owner's coverage, the coverage is recomputed at
+  // the next barrier wait (see staleCoverage_).
+  for (int owner = 0; owner < waveCount(); ++owner) {
+    if (owner == wave.value || staleCoverage_[owner] ||
+        acquired(wave, WaveId{owner}) != covered_[owner])
+      continue;
+    if (--atCoverage_[owner] == 0) {
+      staleCoverage_[owner] = true;
+      hasStaleCoverage_ = true;
+    }
+  }
+}
+
+void RaceDetector::refreshStaleCoverage() {
+  if (!hasStaleCoverage_)
+    return;
+  hasStaleCoverage_ = false;
+  for (int owner = 0; owner < waveCount(); ++owner) {
+    if (!staleCoverage_[owner])
+      continue;
+    staleCoverage_[owner] = false;
+    recomputeCoverage(WaveId{owner});
+  }
 }
 
 void RaceDetector::stopAwaiting(WaveId wave, std::optional<uint8_t> barrier) {

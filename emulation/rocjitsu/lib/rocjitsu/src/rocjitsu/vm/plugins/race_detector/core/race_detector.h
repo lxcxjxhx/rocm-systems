@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <limits>
 #include <optional>
 #include <span>
 #include <utility>
@@ -139,9 +138,7 @@ public:
 
   /// Whether every other wave of the workgroup has ended, or there is none,
   /// so that no other wave can race with an event `wave` completes.
-  bool isOnlyLiveWave(WaveId wave) const {
-    return covered_[wave.value] == std::numeric_limits<uint32_t>::max();
-  }
+  bool isOnlyLiveWave(WaveId wave) const { return liveWaves_ == 1 && !ended_[wave.value]; }
 
   // -- Barrier ordering --
 
@@ -213,6 +210,9 @@ private:
   /// covers.
   void recomputeCoverage(WaveId owner);
 
+  /// Recompute the coverage that waves ending left stale.
+  void refreshStaleCoverage();
+
   struct LdsChunkCounts {
     int bytes = 0;
     /// When bytes > 0, a nonnegative owner proves that every counted event
@@ -261,6 +261,14 @@ private:
   std::vector<uint32_t> covered_;
   /// Per owner, how many other live waves have acquired exactly covered_.
   std::vector<int> atCoverage_;
+  /// Owners whose last wave at covered_ ended. Their coverage is recomputed,
+  /// and what it covers retired, at the next barrier wait rather than when
+  /// the wave ends: the wave's halt is reported under the plugin group's
+  /// lock, and at the end of a workgroup nothing remains to benefit. Until
+  /// then the covered events are still checked, and skipped as ordered.
+  std::vector<bool> staleCoverage_;
+  bool hasStaleCoverage_ = false;
+  int liveWaves_ = 0;
   /// The join of the clocks of the waves that ended.
   std::vector<uint32_t> exitClock_;
   std::vector<bool> ended_;

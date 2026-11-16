@@ -2990,17 +2990,38 @@ TEST(RaceDetector, SplitBarrier_EachWavesEventsRetireAfterTheOthersWait) {
 
 // Once every other wave has ended, no wave can race with the survivor's
 // events, so they retire as soon as they complete, as in a single-wave
-// workgroup.
+// workgroup. The write it completed before then stays until the next wait.
 TEST(RaceDetector, SplitBarrier_OnlyLiveWaveRetiresEventsOnCompletion) {
   RaceTestBuilder b(/*numWaves=*/2, /*vgprs=*/8, /*sgprs=*/8, kWave32);
   dsWrite(b, 0);
   b.waitDscnt(0, 0);
   EXPECT_EQ(b.ldsWriteEventCount(), 1u);
   b.endWave(1);
-  // Ending wave 1 releases wave 0's earlier write as well.
-  EXPECT_EQ(b.ldsWriteEventCount(), 0u);
   dsWrite(b, 0, kY);
   b.waitDscnt(0, 0);
+  EXPECT_EQ(b.ldsWriteEventCount(), 1u);
+  EXPECT_EQ(b.barrierPendingEventCount(0), 1u);
+}
+
+// A wave ending does no retirement work: an owner whose coverage the ended
+// wave was holding back is recomputed at the next barrier wait. Until then the
+// covered event is still in the history but ordered for every live wave.
+TEST(RaceDetector, SplitBarrier_WaveEndDefersRetirementToNextWait) {
+  RaceTestBuilder b(/*numWaves=*/3, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  const BarrierRoundId round0 = RaceTestBuilder::workgroupRound(0);
+  const BarrierRoundId round1 = RaceTestBuilder::workgroupRound(1);
+  dsWrite(b, 0);
+  b.waitDscnt(0, 0);
+  signalAndComplete(b, round0, {0, 1, 2});
+  b.waitPassed(0, round0);
+  b.waitPassed(1, round0);
+  // Wave 2 ends without passing its wait; only it held the write back.
+  b.endWave(2);
+  EXPECT_EQ(b.ldsWriteEventCount(), 1u);
+  b.checkLdsRead(/*wave=*/1, /*lane=*/0, kX, /*bytes=*/4);
+  EXPECT_EQ(b.raceCount(), 0);
+  signalAndComplete(b, round1, {0, 1});
+  b.waitPassed(0, round1);
   EXPECT_EQ(b.ldsWriteEventCount(), 0u);
   EXPECT_EQ(b.barrierPendingEventCount(0), 0u);
 }
