@@ -58,10 +58,7 @@ tables:
   - metric: gl2.memory_wr_bw
     pct_of_peak: false
   - metric: sl1d.req_bw
-    label: Scalar Data Cache BW
   - metric: sl1d.hits_per_req
-    label: Scalar Data Cache Hit Rate
     pct_of_peak: false
   - metric: l1i.hits_per_req
-    label: Instruction Cache Hit Rate
     pct_of_peak: false
