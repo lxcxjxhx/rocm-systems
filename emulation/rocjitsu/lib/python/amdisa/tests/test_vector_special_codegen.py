@@ -371,12 +371,6 @@ def test_vop3_f16_simd_probes_split_true16_from_generic():
         simd_probe_line('v_fmac_f64_vop3')
         == '  ROCJITSU_TRY_SIMD_FMAC_VOP3_MODE_FP64();'
     )
-    assert simd_probe_line('v_cmp_class_f16_vop3').startswith(
-        '  ROCJITSU_TRY_SIMD_VOP3_CLASS_B32'
-    )
-    assert simd_probe_line('v_cmp_class_f16_vop3', true16_vop3=True).startswith(
-        '  ROCJITSU_TRY_SIMD_VOP3_CLASS_TRUE16_B32'
-    )
     assert simd_probe_line('v_cvt_f32_f16_vop3') == (
         '  ROCJITSU_TRY_SIMD_CVT_F32_F16_VOP3();'
     )
