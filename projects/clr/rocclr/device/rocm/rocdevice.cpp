@@ -156,6 +156,7 @@ Device::Device(hsa_agent_t bkendDevice)
   gpuvm_segment_.handle = 0;
   gpu_fine_grained_segment_.handle = 0;
   gpu_ext_fine_grained_segment_.handle = 0;
+  gpu_kernarg_segment_.handle = 0;
   prefetch_signal_.handle = 0;
   cache_state_ = Device::CacheState::kCacheStateInvalid;
 }
@@ -878,6 +879,13 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
             Hsa::memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS, &global_flag);
         if (stat != HSA_STATUS_SUCCESS) {
           return stat;
+        }
+
+        // The device kernarg pool is also coarse grained, so it has to be
+        // claimed before the tests below.
+        if ((global_flag & HSA_REGION_GLOBAL_FLAG_KERNARG) != 0) {
+          dev->gpu_kernarg_segment_ = pool;
+          break;
         }
 
         // If the flag set is ext scoped fine grain, break the loop
@@ -2669,8 +2677,15 @@ void Device::releaseMemory(void* ptr, size_t size) const {
 }
 
 void* Device::deviceLocalAlloc(size_t size, const AllocationFlags& flags, bool allowAllAgentsAccess) const {
+  // Executable device memory holds kernel arguments. Take it from the device
+  // kernarg pool when ROCr exposes one: that pool is executable by
+  // construction, so the request stays eligible for ROCr's suballocator and a
+  // kernarg buffer no longer costs a 2 MiB buffer object of its own.
+  const bool use_kernarg_pool = flags.executable_ && gpu_kernarg_segment_.handle != 0;
+
   const hsa_amd_memory_pool_t& pool =
-      (flags.pseudo_fine_grain_ && gpu_ext_fine_grained_segment_.handle)
+      use_kernarg_pool ? gpu_kernarg_segment_
+      : (flags.pseudo_fine_grain_ && gpu_ext_fine_grained_segment_.handle)
           ? gpu_ext_fine_grained_segment_
       : (flags.atomics_ && gpu_fine_grained_segment_.handle) ? gpu_fine_grained_segment_
                                                              : gpuvm_segment_;
@@ -2686,7 +2701,7 @@ void* Device::deviceLocalAlloc(size_t size, const AllocationFlags& flags, bool a
   if (flags.contiguous_) {
     hsa_mem_flags = HSA_AMD_MEMORY_POOL_CONTIGUOUS_FLAG;
   }
-  if (flags.executable_) {
+  if (flags.executable_ && !use_kernarg_pool) {
     hsa_mem_flags |= HSA_AMD_MEMORY_POOL_EXECUTABLE_FLAG;
   }
 
