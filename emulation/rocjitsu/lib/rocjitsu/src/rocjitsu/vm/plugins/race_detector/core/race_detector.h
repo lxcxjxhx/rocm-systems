@@ -209,9 +209,9 @@ private:
   /// retiring the events that every other live wave has now acquired.
   void acquire(WaveId accessor, std::span<const uint32_t> clock);
 
-  /// `owner`'s events that `accessor` held back at the coverage minimum may
-  /// now be retirable: `accessor` raised its entry or stopped counting.
-  void leaveCoverageMinimum(WaveId accessor, WaveId owner);
+  /// A wave at `owner`'s coverage minimum raised its entry, so `owner`'s
+  /// events it was holding back may now be retirable.
+  void leaveCoverageMinimum(WaveId owner);
 
   /// Recompute `owner`'s coverage from the live waves and retire what it
   /// covers.

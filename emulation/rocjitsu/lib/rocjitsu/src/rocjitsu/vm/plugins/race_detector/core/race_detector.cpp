@@ -179,6 +179,7 @@ void RaceDetector::barrierWaitPassed(WaveId wave, BarrierRoundId round) {
 }
 
 void RaceDetector::waveEnded(WaveId wave) {
+  assert(!ended_[wave.value]);
   ended_[wave.value] = true;
   endedWaves_ |= uint64_t{1} << wave.value;
   const auto row =
@@ -232,11 +233,11 @@ void RaceDetector::acquire(WaveId accessor, std::span<const uint32_t> clock) {
     const bool wasAtCoverage = owner != accessor.value && entry == covered_[owner];
     entry = clock[owner];
     if (wasAtCoverage)
-      leaveCoverageMinimum(accessor, WaveId{owner});
+      leaveCoverageMinimum(WaveId{owner});
   }
 }
 
-void RaceDetector::leaveCoverageMinimum(WaveId /*accessor*/, WaveId owner) {
+void RaceDetector::leaveCoverageMinimum(WaveId owner) {
   // Coverage can rise only when the last wave at the minimum leaves it.
   if (--atCoverage_[owner.value] == 0)
     recomputeCoverage(owner);
