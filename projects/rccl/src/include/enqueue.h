@@ -22,6 +22,8 @@
 #include "enqueue/task_sched.h"
 #include "enqueue/mgmt_task_enq.h"
 
+#include <assert.h>
+
 #define NCCL_LL_ALIGNMENT_PER_THREAD sizeof(uint64_t)
 #define NCCL_LL128_ALIGNMENT_PER_WARP 480
 #define NCCL_SIMPLE_ALIGNMENT (WARP_SIZE * 8LL * 16LL)
@@ -92,15 +94,43 @@ ncclResult_t rcclAddonLaunchEnd(struct ncclComm* comm, cudaStream_t stream,
 // once, matching the native path.
 void rcclLogCollInfo(const struct ncclInfo& info);
 
+template <bool ProfilerEvents, typename LaunchFn>
+inline ncclResult_t rcclAddonDoLaunch(struct ncclInfo& info, bool isGraphCaptured, LaunchFn&& launch) {
+  ncclResult_t ret = ncclSuccess;
+  if constexpr (ProfilerEvents) {
+    struct ncclProfilerEventRef groupEventHandle{};
+    struct ncclProfilerEventRef collEventHandle{};
+
+    NCCLCHECK(ncclProfilerStartGroupApiEvent(&info, isGraphCaptured));
+    NCCLCHECK(ncclProfilerRecordGroupApiEventState(ncclProfilerGroupStartApiStop));
+    NCCLCHECK(ncclProfilerStartCollApiEvent(&info, isGraphCaptured));
+    ret = ncclProfilerStartAddonEvent(&info, isGraphCaptured, &groupEventHandle, &collEventHandle);
+    if (ret == ncclSuccess) {
+      ret = launch();
+      ncclProfilerStopAddonEvent(&groupEventHandle, &collEventHandle);
+    }
+    ncclProfilerStopCollApiEvent();
+  } else {
+    ret = launch();
+  }
+  return ret;
+}
+
 // An addon collective that returns before ncclEnqueueCheck should still generate profiler events
 // when a profiler plugin is loaded. Hierarchical addons must pass ProfilerEvents = false,
 // since their sub-collectives go through ncclEnqueueCheck and generate the events themselves.
 // CE 2-shot collectives also use a different profiling path and must pass ProfilerEvents = false.
 template <bool ProfilerEvents = true, typename LaunchFn>
 inline ncclResult_t rcclAddonLaunch(struct ncclInfo& info, LaunchFn&& launch) {
-  ncclResult_t result = ncclSuccess;
+  ncclResult_t ret = ncclSuccess;
   struct rcclAddonLaunchState state = {-1, false};
-  struct ncclProfilerEventRef addonCollEventHandle{};
+
+  // Only collectives should use rcclAddonLaunch
+  assert(info->coll != ncclFuncSendRecv && info->coll != ncclFuncSend && info->coll != ncclFuncRecv);
+  assert(info->coll != ncclFuncPutSignal && info->coll != ncclFuncSignal && info->coll != ncclFuncWaitSignal);
+
+  // Empty collectives can be discarded.
+  if (info->count == 0 && info->coll != ncclFuncAlltoAllv) return ncclSuccess;
 
   if constexpr (ProfilerEvents) {
     // Ensure profilerGroupDepth updates correctly for implicit internal group
@@ -112,40 +142,19 @@ inline ncclResult_t rcclAddonLaunch(struct ncclInfo& info, LaunchFn&& launch) {
 
   rcclLogCollInfo(info);
   // Saves capturing graph and its validity into state
-  result = rcclAddonLaunchBegin(info.comm, info.stream, &state);
+  ret = rcclAddonLaunchBegin(info.comm, info.stream, &state);
+  if (ret == ncclSuccess) {
+    ret = rcclAddonDoLaunch<ProfilerEvents>(info, state.capturing, std::forward<LaunchFn>(launch));
+  }
+  ret = rcclAddonLaunchEnd(info.comm, info.stream, state, ret);
+  if (ret == ncclSuccess) info.comm->opCount++;
 
-  if (result == ncclSuccess) {
-    if constexpr (ProfilerEvents) {
-      // Generate GroupApi, CollApi, and Coll start events
-      NCCLCHECK(ncclProfilerStartGroupApiEvent(&info, state.capturing));
-      NCCLCHECK(ncclProfilerRecordGroupApiEventState(ncclProfilerGroupStartApiStop));
-      NCCLCHECK(ncclProfilerStartCollApiEvent(&info, state.capturing));
-      NCCLCHECK(ncclProfilerStartAddonCollEvent(&info, state.capturing, &addonCollEventHandle));
-    }
-    result = launch();
+  if constexpr (ProfilerEvents) {
+    ncclGroupErrCheck(ret);
+    NCCLCHECK(ncclGroupEndInternal());
   }
 
-  result = rcclAddonLaunchEnd(info.comm, info.stream, state, result);
-
-  if (result == ncclSuccess) {
-    info.comm->opCount++;
-
-    if constexpr (ProfilerEvents) {
-      // Generate Coll, CollApi, and GroupApi stop events; latter is inside ncclGroupEndInternal
-      ncclProfilerStopAddonCollEvent(&addonCollEventHandle);
-      ncclProfilerStopCollApiEvent();
-
-      ncclGroupErrCheck(result);
-      NCCLCHECK(ncclGroupEndInternal());
-      /* if depth is 1, ncclGroupEndInternal() will trigger group ops. The state can change
-       * so we have to check state here. */
-      if (info.comm && !info.comm->config.blocking) {
-        NCCLCHECK(ncclCommGetAsyncError(info.comm, &result));
-      }
-    }
-  }
-
-  return result;
+  return ret;
 }
 
 ncclResult_t ncclPrepareTasks(struct ncclComm* comm, bool* algoNeedConnect, bool* needConnect, bool* needGenkDevComm,
