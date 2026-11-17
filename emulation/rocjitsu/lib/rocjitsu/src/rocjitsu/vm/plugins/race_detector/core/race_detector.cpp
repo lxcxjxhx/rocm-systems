@@ -9,6 +9,8 @@
 #include <functional>
 #include <limits>
 #include <span>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -18,6 +20,11 @@ RaceDetector::RaceDetector(int nWaves, int vgprCount, int sgprCount, Dim3d workg
                            std::function<void(RaceViolation)> raceHandler,
                            CounterCapacities counterCapacities, size_t ldsSizeBytes)
     : ldsSizeBytes_(ldsSizeBytes), workgroupId(workgroupId), raceHandler(std::move(raceHandler)) {
+  // Barrier rounds keep a bit per wave. A workgroup has at most 1024
+  // work-items (CDNA5 ISA 2.2), so at most 32 waves of 32 lanes.
+  if (nWaves > kMaxWaves)
+    throw std::length_error("race detector supports at most " + std::to_string(kMaxWaves) +
+                            " waves in a workgroup, got " + std::to_string(nWaves));
   waveRaceStates.reserve(nWaves);
   for (int i = 0; i < nWaves; ++i) {
     waveRaceStates.emplace_back(vgprCount, sgprCount, WaveId{i}, this, counterCapacities);
@@ -28,9 +35,6 @@ RaceDetector::RaceDetector(int nWaves, int vgprCount, int sgprCount, Dim3d workg
     acquired(WaveId{i}, WaveId{i}) = 1;
   exitClock_.assign(nWaves, 0);
   ended_.assign(nWaves, false);
-  // Round membership is a bit per wave. A workgroup has at most 1024
-  // work-items, so at most 32 wave32 waves (CDNA5 ISA 2.2).
-  assert(nWaves <= 64);
   // With no other wave, nothing holds back retirement.
   covered_.assign(nWaves, nWaves == 1 ? std::numeric_limits<uint32_t>::max() : 0);
   atCoverage_.assign(nWaves, nWaves - 1);

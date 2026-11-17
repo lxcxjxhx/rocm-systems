@@ -1162,9 +1162,8 @@ void RaceDetectorPlugin::onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefro
   const bool wholeWorkgroup = round.kind == BarrierKind::Workgroup;
   if (round.kind != BarrierKind::Cluster) {
     // Workgroup and named rounds notify the waves of one workgroup, and so of
-    // one detector. At most 32 waves: a workgroup has at most 1024 work-items
-    // (CDNA5 ISA 2.2), and waves are at least 32 wide.
-    std::array<WaveId, 64> waves;
+    // one detector, which holds at most RaceDetector::kMaxWaves waves.
+    std::array<WaveId, RaceDetector::kMaxWaves> waves;
     size_t count = 0;
     RaceDetector *detector = nullptr;
     for (auto *wf : wavefronts) {

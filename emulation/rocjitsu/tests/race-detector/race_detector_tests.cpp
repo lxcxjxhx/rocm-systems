@@ -37,6 +37,7 @@
 #include <initializer_list>
 #include <limits>
 #include <span>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -3118,4 +3119,16 @@ TEST(RaceDetector, SplitBarrier_OnlyLiveWaveDoesNotRecordOperandReads) {
   b.ldsOperandRead(/*wave=*/0, /*lane=*/0, kX, /*bytes=*/4);
   EXPECT_EQ(b.ldsReadEventCount(), 0u);
   EXPECT_EQ(b.barrierPendingEventCount(0), 0u);
+}
+
+// Barrier rounds keep a bit per wave, so a detector refuses a workgroup with
+// more waves than RaceDetector::kMaxWaves.
+TEST(RaceDetector, SplitBarrier_RejectsMoreWavesThanARoundCanTrack) {
+  const auto make = [](int waves) {
+    RaceDetector detector(
+        waves, /*vgprCount=*/1, /*sgprCount=*/1, Dim3d(0), [](RaceViolation) {},
+        counterCapacitiesForArch(ROCJITSU_CODE_ARCH_CDNA5), /*ldsSizeBytes=*/64 * 1024);
+  };
+  EXPECT_NO_THROW(make(RaceDetector::kMaxWaves));
+  EXPECT_THROW(make(RaceDetector::kMaxWaves + 1), std::length_error);
 }

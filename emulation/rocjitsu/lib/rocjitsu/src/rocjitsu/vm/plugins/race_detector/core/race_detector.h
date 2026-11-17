@@ -163,6 +163,9 @@ public:
   /// Rounds that have not completed, or that a member has yet to wait for.
   size_t openBarrierRounds() const { return openRounds_; }
 
+  /// The most waves a workgroup can have; barrier rounds keep a bit per wave.
+  static constexpr int kMaxWaves = 64;
+
 private:
   /// A slot for one round. Closed slots keep their storage for reuse, since a
   /// workgroup typically has one or two rounds open at a time.
