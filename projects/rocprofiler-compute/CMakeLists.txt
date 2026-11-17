@@ -811,6 +811,14 @@ if(NOT TEST_FROM_INSTALL)
             tests/unit/rocprof_compute_soc/metric_library/test_metric_library_sync.py
             ${WORKING_DIR_OPTION}
     )
+    add_test(
+        NAME test_analysis_views_sync
+        COMMAND
+            ${PYTHON_TEST_COMMAND} -m pytest --junitxml=tests/test_analysis_views_sync.xml
+            ${COV_OPTION}
+            tests/unit/rocprof_compute_soc/metric_library/test_analysis_views_sync.py
+            ${WORKING_DIR_OPTION}
+    )
 endif()
 
 # The real-equation round-trip test imports tools/, which an install tree lacks.
