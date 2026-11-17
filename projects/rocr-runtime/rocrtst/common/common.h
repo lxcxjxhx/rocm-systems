@@ -328,14 +328,23 @@ static constexpr size_t kMemAvailGranule = 2ULL * 1024 * 1024;  // 2 MB
 /// Allowance for the rounding above when comparing two readings: one granule
 /// of slack for each of the two readings being compared.
 ///
-/// This is NOT an allowance for other processes. The reported figure is
-/// DEVICE-WIDE - KFD derives it from accounting summed over every process
-/// using the GPU, not from the calling process alone - so any other user of
-/// the same device that allocates or frees between two readings moves it, by
-/// however much that process happens to be using. No fixed tolerance can
-/// absorb that, because a neighbour's footprint is unbounded. Tests must
-/// instead DETECT that the device was disturbed and decline to conclude:
-/// see MemAvailDisturbed() below.
+/// This is NOT an allowance for other processes. The reported figure is never
+/// scoped to the calling process: KFD derives it from accounting summed over
+/// every process in the same scope. On a discrete GPU that scope is the whole
+/// device; on a partitioned device it is the memory partition; and where the
+/// figure is taken against the GTT or system-memory limit instead, the
+/// accounting is shared across every GPU in the system. Whichever applies, a
+/// process other than this one that allocates or frees between two readings
+/// moves the figure, by however much that process happens to be using. No
+/// fixed tolerance can absorb that, because a neighbour's footprint is
+/// unbounded. Tests must instead DETECT that the figure was disturbed and
+/// decline to conclude: see MemAvailDisturbed() below.
+///
+/// The granule above is likewise the discrete-GPU value. Where the figure is
+/// reported against the system-memory limit it is page-granular instead, and
+/// this tolerance is then far coarser than the true rounding - it will not
+/// cause a false failure, but it will absorb a correspondingly small
+/// disturbance rather than detecting it.
 static constexpr size_t kMemAvailTolerance = 2 * kMemAvailGranule;  // 4 MB
 
 /// Absolute difference between two memory-availability readings. The readings
@@ -345,9 +354,9 @@ static inline size_t MemAvailDelta(size_t a, size_t b) {
   return (a > b) ? (a - b) : (b - a);
 }
 
-/// True if the device-wide availability figure did not return to where it
-/// started after a test released everything it allocated, which means some
-/// other process on the same GPU allocated or freed during the test window.
+/// True if the availability figure did not return to where it started after a
+/// test released everything it allocated, which means some other process
+/// sharing the accounting scope allocated or freed during the test window.
 ///
 /// When this is true the readings taken during the window cannot be
 /// attributed to the calling process, so there is nothing for the test to
@@ -363,6 +372,12 @@ static inline bool MemAvailDisturbed(size_t begin, size_t end) {
 /// the caller can return early. Returns false if the device was quiet, in
 /// which case the readings mean what the test assumes and it should check
 /// them.
+///
+/// Note that this is the rocrtst skip convention, not a gtest skip: the
+/// vendored gtest predates GTEST_SKIP(), so the skip is recorded with
+/// SkippedTestTracker and printed, while gtest itself still counts the test as
+/// passed in its tally, exit code and XML. Read the end-of-run skip summary,
+/// not just the gtest totals.
 /// \param[in] begin reading taken before the test allocated anything
 /// \param[in] end reading taken after the test released everything
 /// \returns true if the test must not conclude from its readings

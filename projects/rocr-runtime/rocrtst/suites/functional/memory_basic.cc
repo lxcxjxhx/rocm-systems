@@ -580,11 +580,23 @@ void MemoryTest::MemAvailableTest(hsa_agent_t ag, hsa_amd_memory_pool_t pool) {
   // The device was quiet, so the readings mean what the test assumes.
   // Memory available after an allocation can be lower than this bound because
   // of fragmentation, but it must not be higher.
-  ASSERT_GE(ag_avail_memory_before - allocate_sz1 + rocrtst::kMemAvailTolerance,
-            ag_avail_after_alloc1);
-  ASSERT_GE(ag_avail_memory_before - (allocate_sz1 + allocate_sz2) +
-                rocrtst::kMemAvailTolerance,
-            ag_avail_after_alloc2);
+  //
+  // Stated without subtracting: every reading is unsigned, and the allocation
+  // sizes are not bounded by the reading they are compared against, so
+  // subtracting would wrap - leaving either a bound near 2^64 that asserts
+  // nothing, or a tiny bound that fails a test which is behaving correctly.
+  //
+  // Each allocation is also judged against the reading taken immediately
+  // before it, not against the figure from the top of the test. The check
+  // above establishes that the figure returned to where it started, but a
+  // process that frees and then re-allocates the same amount satisfies that
+  // and still inflates a reading taken in between. Comparing each allocation
+  // against its own immediately preceding reading is the shortest window this
+  // test can be wrong about.
+  ASSERT_LE(ag_avail_after_alloc1 + allocate_sz1,
+            ag_avail_memory_before + rocrtst::kMemAvailTolerance);
+  ASSERT_LE(ag_avail_after_alloc2 + allocate_sz2,
+            ag_avail_after_alloc1 + rocrtst::kMemAvailTolerance);
 
   if (verbosity() > 0) {
     std::cout << "     Available memory end: " << ag_avail_memory_after << std::endl;
