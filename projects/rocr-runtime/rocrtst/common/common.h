@@ -319,10 +319,14 @@ hsa_status_t GetAgentPools(
 static constexpr size_t kMaxTestAllocAsan = 512ULL * 1024 * 1024;  // 512 MB
 #endif
 
-/// Granularity of HSA_AMD_AGENT_INFO_MEMORY_AVAIL on a discrete GPU. KFD
-/// rounds the figure it reports down to this boundary, so two reads taken
-/// around an allocation can differ from the allocation size by up to one
-/// granule even when nothing else on the device moved.
+/// Granularity of HSA_AMD_AGENT_INFO_MEMORY_AVAIL where the figure is taken
+/// against VRAM. KFD charges a VRAM allocation rounded UP to this boundary,
+/// so two reads taken around an allocation can differ from the allocation
+/// size by up to one granule even when nothing else on the device moved.
+///
+/// KFD also rounds the figure it reports DOWN to the same boundary, but that
+/// rounding cancels between two reads and is not what the allowance below is
+/// for.
 static constexpr size_t kMemAvailGranule = 2ULL * 1024 * 1024;  // 2 MB
 
 /// Allowance for the rounding above when comparing two readings: one granule
@@ -330,21 +334,24 @@ static constexpr size_t kMemAvailGranule = 2ULL * 1024 * 1024;  // 2 MB
 ///
 /// This is NOT an allowance for other processes. The reported figure is never
 /// scoped to the calling process: KFD derives it from accounting summed over
-/// every process in the same scope. On a discrete GPU that scope is the whole
-/// device; on a partitioned device it is the memory partition; and where the
-/// figure is taken against the GTT or system-memory limit instead, the
-/// accounting is shared across every GPU in the system. Whichever applies, a
+/// every process in the same scope. On an unpartitioned discrete GPU that
+/// scope is the whole device; on a partitioned one it is the XCP's share of
+/// the memory partition, since usage is bucketed per XCP and the capacity
+/// term is divided per XCP under the even-capping mode; and where the figure
+/// is taken against the GTT or system-memory limit instead, the accounting is
+/// shared across every GPU in the system. Whichever applies, a
 /// process other than this one that allocates or frees between two readings
 /// moves the figure, by however much that process happens to be using. No
 /// fixed tolerance can absorb that, because a neighbour's footprint is
 /// unbounded. Tests must instead DETECT that the figure was disturbed and
 /// decline to conclude: see MemAvailDisturbed() below.
 ///
-/// The granule above is likewise the discrete-GPU value. Where the figure is
-/// reported against the system-memory limit it is page-granular instead, and
-/// this tolerance is then far coarser than the true rounding - it will not
-/// cause a false failure, but it will absorb a correspondingly small
-/// disturbance rather than detecting it.
+/// The granule above holds wherever the figure is taken against VRAM, which
+/// includes partitioned parts - partitioning changes the scope, not the
+/// granule. It is page-granular only where the figure is reported against the
+/// system-memory limit, and this tolerance is then far coarser than the true
+/// rounding - it will not cause a false failure, but it will absorb a
+/// correspondingly small disturbance rather than detecting it.
 static constexpr size_t kMemAvailTolerance = 2 * kMemAvailGranule;  // 4 MB
 
 /// Absolute difference between two memory-availability readings. The readings

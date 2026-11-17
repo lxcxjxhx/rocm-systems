@@ -452,6 +452,18 @@ void MemoryTest::MemAvailableTest(hsa_agent_t ag, hsa_amd_memory_pool_t pool) {
     allocate_sz1 = (rocrtst::kMaxTestAllocAsan / gran_sz) * gran_sz;
 #endif
 
+  // Sizing from the live figure can round to nothing when the device-wide
+  // figure is below two granules, and a zero-byte request is rejected as an
+  // invalid argument. That is another process holding the device, which is
+  // the condition this test declines to conclude under rather than failing.
+  if (allocate_sz1 == 0) {
+    rocrtst::SkipCurrentTest(
+        "device-wide MEMORY_AVAIL is below two allocation granules, so no "
+        "allocation can be sized from it. This test needs exclusive use of "
+        "the device.");
+    return;
+  }
+
   err = hsa_amd_memory_pool_allocate(pool, allocate_sz1, 0, &memPtr1);
   ASSERT_EQ(err, HSA_STATUS_SUCCESS);
 
