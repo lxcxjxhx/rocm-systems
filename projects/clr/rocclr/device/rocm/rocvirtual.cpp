@@ -1629,6 +1629,24 @@ void VirtualGPU::RetiringSignalTracker::ReleaseHeldSignals(size_t mark) {
 }
 
 // ================================================================================================
+void VirtualGPU::HwQueueTracker::KeepUntilRetired(const std::vector<void*>& pins) {
+  for (void* pin : pins) {
+    reinterpret_cast<ProfilingSignal*>(pin)->release();
+  }
+  ReleaseHeldSignals();
+}
+
+// ================================================================================================
+void VirtualGPU::RetiringSignalTracker::KeepUntilRetired(const std::vector<void*>& pins) {
+  for (void* pin : pins) {
+    open_pins_.signals.push_back(reinterpret_cast<ProfilingSignal*>(pin));
+  }
+  open_pins_.signals.insert(open_pins_.signals.end(), held_signals_.begin(), held_signals_.end());
+  held_signals_.clear();
+  ClosePins();
+}
+
+// ================================================================================================
 bool VirtualGPU::RetiringSignalTracker::WaitCurrent() {
   if (!HwQueueTracker::WaitCurrent()) {
     return false;
@@ -4726,15 +4744,18 @@ void VirtualGPU::submitBatchCopyMemory(amd::BatchCopyMemoryCommand& cmd) {
   if (!Barriers().IsExternalSignalListEmpty()) {
     dispatchBarrierPacket(kNopPacketHeader);
   }
-  // The barrier pinned the batch signals it waits on
-  Barriers().ReleaseHeldSignals();
-
   if (!result) {
     LogError("submitBatchCopyMemory failed!");
+    // The error status drops the command's pins before the GPU passes the waits
+    Barriers().KeepUntilRetired(cmd.TakePinnedHwEvents());
     cmd.setStatus(CL_OUT_OF_RESOURCES);
-  } else if (!amd::IS_HIP) {
-    for (const auto& op : copyOps) {
-      op.dstMemory->signalWrite(&dev());
+  } else {
+    // The barrier pinned the batch signals it waits on
+    Barriers().ReleaseHeldSignals();
+    if (!amd::IS_HIP) {
+      for (const auto& op : copyOps) {
+        op.dstMemory->signalWrite(&dev());
+      }
     }
   }
 
