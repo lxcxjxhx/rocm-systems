@@ -6,6 +6,14 @@ Full documentation for amd_smi_lib is available at [https://rocm.docs.amd.com/pr
 
 ## amd_smi_lib for ROCm 10.3.0
 
+### Changed
+
+- **`amdsmi_get_gpu_kfd_info()` now returns `AMDSMI_STATUS_NOT_SUPPORTED` on WSL**.
+  - WSL has no KFD, so the call previously returned success with placeholder values; it now reports the data as unsupported.
+
+- **Repeated `amd-smi` device selections now combine**.  
+  - Repeated `--gpu`, `--cpu`, `--core`, and `--nic` options combine without duplicates. `reset --gpureset -g all -g 0` now resets every GPU (previously GPU 0 only); `set -g 0 -C CPX -g 1 -C SPX` now applies SPX to GPUs 0 and 1 (previously GPU 1 only). Remove earlier device options to retain the previous target set.
+
 ### Resolved Issues
 
 - **Fixed `amd-smi ras --cper` crashing with `TypeError` when no GPU devices are available**.
