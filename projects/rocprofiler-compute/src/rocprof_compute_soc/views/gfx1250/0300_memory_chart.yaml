@@ -42,7 +42,6 @@ tables:
   - metric: sl1d.dcache_req_stall_rate
     round: 0
   - metric: sl1d.req_bw
-    label: Dcache Request Bandwidth
   - metric: sl1d.gl1_rd_bw
     label: Dcache-GL1 Read Bandwidth
   - metric: sl1d.dcache_gl1_req_lat

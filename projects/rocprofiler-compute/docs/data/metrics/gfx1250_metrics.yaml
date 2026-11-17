@@ -187,7 +187,7 @@ Memory chart - Scalar Data Cache:
   Dcache Request Stall Rate:
     rst: Percentage of WGP cycles the SQC scalar cache is stalled.
     unit: Percent
-  Dcache Request Bandwidth:
+  sL1D Load Bandwidth:
     rst: The number of bytes loaded by scalar memory instructions, divided by total duration. The number of bytes is the number of dwords each instruction loads multiplied by four; bounds-check reductions are ignored.
     unit: GB/s
   Dcache-GL1 Read Bandwidth:
@@ -938,10 +938,10 @@ Shader-TXA Requests - TDM:
   TDM Instructions:
     rst: Total TDM instructions processed by TXA.
     unit: Count per Normalization Unit
-  TDM Async Load Instructions:
+  TDM Async Load Requests:
     rst: Number of TDM async load requests processed by TXA.
     unit: Count per Normalization Unit
-  TDM Async Store Instructions:
+  TDM Async Store Requests:
     rst: Number of TDM async store requests processed by TXA.
     unit: Count per Normalization Unit
   TDM Async Cluster Load Instructions:

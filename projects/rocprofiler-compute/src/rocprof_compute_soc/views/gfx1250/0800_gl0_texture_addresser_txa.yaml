@@ -76,9 +76,7 @@ tables:
   metrics:
   - metric: txa.tdm_insts
   - metric: txa.tdm_async_load_insts
-    label: TDM Async Load Instructions
   - metric: txa.tdm_async_store_insts
-    label: TDM Async Store Instructions
   - metric: txa.tdm_async_cluster_load_insts
   - metric: txa.tdm_async_barrier_inst
 - title: Shader-TXA Requests - Block Load and Store
