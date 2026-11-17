@@ -40,6 +40,7 @@ from utils.utils_common import (
     canonical_config_arch,
     format_table_id,
     load_yaml,
+    mapping_field_errors,
 )
 from utils.utils_counter_defs import (
     PER_DISPATCH_SUFFIX,
@@ -456,24 +457,10 @@ def _file_name_errors(paths: List[str]) -> List[str]:
     return errors
 
 
-# Moves to utils_common in the analyze cutover, shared with validate_metric_library.
-def _mapping_field_errors(
-    entry: Dict[str, Any], required: Tuple[str, ...], optional: Tuple[str, ...]
-) -> List[str]:
-    """Report each missing required field and each unknown field of a YAML mapping."""
-    errors = [f"'{field}' is required" for field in required if field not in entry]
-    errors.extend(
-        f"'{field}' is not a known field"
-        for field in entry
-        if field not in required and field not in optional
-    )
-    return errors
-
-
 def _view_shape_errors(document: object) -> List[str]:
     if not isinstance(document, dict):
         return ["a view must be a mapping"]
-    errors = _mapping_field_errors(document, ("view", "tables"), VIEW_FIELDS)
+    errors = mapping_field_errors(document, ("view", "tables"), VIEW_FIELDS)
     tables = document.get("tables")
     if not isinstance(tables, list):
         return [*errors, "'tables' must be a list"]
@@ -487,7 +474,7 @@ def _view_shape_errors(document: object) -> List[str]:
 def _table_shape_errors(table: object) -> List[str]:
     if not isinstance(table, dict):
         return ["a table must be a mapping"]
-    errors = _mapping_field_errors(table, ("title",), TABLE_FIELDS)
+    errors = mapping_field_errors(table, ("title",), TABLE_FIELDS)
     render = _render(table)
     if render not in RENDERS:
         errors.append(f"render {render!r} is not one of {RENDERS}")
@@ -516,7 +503,7 @@ def _metric_table_shape_errors(table: Dict[str, Any]) -> List[str]:
 def _row_shape_errors(row: object, columns: List[str]) -> List[str]:
     if not isinstance(row, dict):
         return ["a row must be a mapping"]
-    errors = _mapping_field_errors(row, (), ROW_FIELDS)
+    errors = mapping_field_errors(row, (), ROW_FIELDS)
     if ("metric" in row) == ("metrics" in row):
         errors.append("needs one of 'metric' and 'metrics'")
     elif "metrics" in row and "label" not in row:
