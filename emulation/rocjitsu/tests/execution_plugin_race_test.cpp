@@ -765,6 +765,13 @@ protected:
     fixture.plugin_group_->onAmdgpuBarrierRoundResolved(members, members, round);
   }
 
+  /// Complete `round`, which notifies `notified` but sets the completion bit
+  /// of `armed` only.
+  void complete(const BarrierRound &round, std::span<Wavefront *> notified,
+                std::span<Wavefront *> armed) {
+    fixture.plugin_group_->onAmdgpuBarrierRoundResolved(notified, armed, round);
+  }
+
   void wait_passed(int wave, const BarrierRound &round) {
     fixture.plugin_group_->onAmdgpuBarrierWaitPassed(*waves[wave], round);
   }
@@ -2661,6 +2668,25 @@ TEST_F(ExitedWaveRaceTest, WorkgroupRoundOrdersExitedWriteOnlyAfterWait) {
   EXPECT_NE(report.find("type=LDS access=read"), std::string::npos) << report;
   EXPECT_NE(report.find("wave=0 lane=0"), std::string::npos) << report;
   wait_passed(0, round);
+}
+
+// Both waves signal two rounds without waiting. The second round arms no wave,
+// since their completion bits are still set by the first, so the detector
+// closes it at once; the first closes when both have waited.
+TEST_F(TensorDmaRaceTest, RoundThatArmsNoWaveClosesInTheDetector) {
+  const BarrierRound round0 = workgroup_round(0);
+  const BarrierRound round1 = workgroup_round(1);
+  signal(0, round0);
+  signal(1, round0);
+  complete(round0, waves);
+  signal(0, round1);
+  signal(1, round1);
+  EXPECT_EQ(detector().openBarrierRounds(), 2u);
+  complete(round1, waves, /*armed=*/{});
+  EXPECT_EQ(detector().openBarrierRounds(), 1u);
+  wait_passed(0, round0);
+  wait_passed(1, round0);
+  EXPECT_EQ(detector().openBarrierRounds(), 0u);
 }
 
 // The barrier hooks are not filtered by wave subscription. A wave the plugin

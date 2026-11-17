@@ -3136,3 +3136,16 @@ TEST(RaceDetector, SplitBarrier_RejectsMoreWavesThanARoundCanTrack) {
   EXPECT_NO_THROW(make(RaceDetector::kMaxWaves));
   EXPECT_THROW(make(RaceDetector::kMaxWaves + 1), std::length_error);
 }
+
+// A round that sets no wave's completion bit, because every member's bit is
+// still set by an earlier round, has no wave to wait for it and closes when it
+// completes.
+TEST(RaceDetector, SplitBarrier_RoundThatArmsNoWaveCloses) {
+  RaceTestBuilder b(/*numWaves=*/2, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  const BarrierRoundId round = RaceTestBuilder::workgroupRound(0);
+  b.signal(0, round);
+  b.signal(1, round);
+  EXPECT_EQ(b.openBarrierRounds(), 1u);
+  b.completeRound(round, {});
+  EXPECT_EQ(b.openBarrierRounds(), 0u);
+}

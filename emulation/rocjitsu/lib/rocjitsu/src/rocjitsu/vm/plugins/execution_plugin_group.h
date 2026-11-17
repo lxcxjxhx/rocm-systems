@@ -564,9 +564,9 @@ public:
   }
 
   /// Report a completed round: onAmdgpuBarrierResolved() with every wave it
-  /// notified, then onAmdgpuBarrierRoundCompleted() with the waves whose
-  /// completion bit it set, under one acquisition of the callback lock. The
-  /// simulator reports every completion through this entry.
+  /// notified, then onAmdgpuBarrierRoundCompleted() with those waves and the
+  /// ones whose completion bit it set, under one acquisition of the callback
+  /// lock. The simulator reports every completion through this entry.
   void onAmdgpuBarrierRoundResolved(std::span<amdgpu::Wavefront *> notified,
                                     std::span<amdgpu::Wavefront *> armed,
                                     const BarrierRound &round) {
@@ -574,7 +574,7 @@ public:
       for (auto &entry : plugins_)
         entry.plugin->onAmdgpuBarrierResolved(notified, round.kind);
       for (auto &entry : plugins_)
-        entry.plugin->onAmdgpuBarrierRoundCompleted(armed, round);
+        entry.plugin->onAmdgpuBarrierRoundCompleted(notified, armed, round);
     });
   }
 

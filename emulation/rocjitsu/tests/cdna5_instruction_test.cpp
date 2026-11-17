@@ -82,7 +82,8 @@ public:
     Hook hook = Hook::Signaled;
     /// The signalling or waiting wave (Signaled, WaitPassed).
     const amdgpu::Wavefront *wave = nullptr;
-    /// The waves notified of the completion, sorted (Resolved, RoundCompleted).
+    /// Sorted: the waves the completion notified (Resolved), or the ones whose
+    /// completion bit it set (RoundCompleted).
     std::vector<const amdgpu::Wavefront *> members;
     /// Resolved only.
     BarrierKind kind = BarrierKind::Workgroup;
@@ -129,9 +130,10 @@ public:
     record(resolved({wavefronts.begin(), wavefronts.end()}, kind));
   }
 
-  void onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefront *> wavefronts,
+  void onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefront *> /*notified*/,
+                                     std::span<amdgpu::Wavefront *> armed,
                                      const BarrierRound &round) override {
-    record(roundCompleted({wavefronts.begin(), wavefronts.end()}, round));
+    record(roundCompleted({armed.begin(), armed.end()}, round));
   }
 
   void onAmdgpuBarrierWaitPassed(const amdgpu::Wavefront &wf, const BarrierRound &round) override {
@@ -1140,6 +1142,23 @@ TEST_F(Gfx1250SplitBarrierHookTest, LeaveCompletesNamedRound) {
   EXPECT_EQ(recorder->events(),
             (std::vector<Event>{signaled(wf0, round), resolved({wf0}, BarrierKind::Named),
                                 completed({wf0}, round), waitPassed(wf0, round)}));
+}
+
+// Both waves signal two rounds without waiting. Round 1 notifies them again,
+// but their completion bits are still set by round 0, so it arms neither.
+TEST_F(Gfx1250SplitBarrierHookTest, RoundThatSetsNoBitArmsNoWave) {
+  const BarrierRound round0 = workgroupRound(0);
+  const BarrierRound round1 = workgroupRound(1);
+  for (int pass = 0; pass < 2; ++pass) {
+    wf0->barrier_signal(-1, 0);
+    wf1->barrier_signal(-1, 0);
+  }
+  EXPECT_EQ(recorder->events(),
+            (std::vector<Event>{signaled(wf0, round0), signaled(wf1, round0),
+                                resolved({wf0, wf1}, BarrierKind::Workgroup),
+                                completed({wf0, wf1}, round0), signaled(wf0, round1),
+                                signaled(wf1, round1), resolved({wf0, wf1}, BarrierKind::Workgroup),
+                                completed({}, round1)}));
 }
 
 // The existing hook keeps its members and kind on every completion path.

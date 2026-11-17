@@ -598,6 +598,7 @@ public:
   }
 
   void onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefront *> wfs,
+                                     std::span<amdgpu::Wavefront *> /*armed*/,
                                      const BarrierRound &round) override {
     HookEvent e{HookEvent::BARRIER_ROUND_COMPLETED};
     if (!wfs.empty()) {

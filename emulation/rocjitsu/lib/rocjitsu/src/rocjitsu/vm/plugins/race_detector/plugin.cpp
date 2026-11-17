@@ -1157,42 +1157,54 @@ void RaceDetectorPlugin::onAmdgpuBarrierSignaled(const amdgpu::Wavefront &wf,
   race->getDetector()->barrierSignaled(race->getWaveId(), roundId(round));
 }
 
-void RaceDetectorPlugin::onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefront *> wavefronts,
+void RaceDetectorPlugin::onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefront *> notified,
+                                                       std::span<amdgpu::Wavefront *> armed,
                                                        const BarrierRound &round) {
   const bool wholeWorkgroup = round.kind == BarrierKind::Workgroup;
+  // Each notified workgroup's detector hears of the completion, with its
+  // armed waves, which it then awaits. A detector whose waves were all
+  // notified with their bit already set has none to await and closes the
+  // round.
   if (round.kind != BarrierKind::Cluster) {
     // Workgroup and named rounds notify the waves of one workgroup, and so of
     // one detector, which holds at most RaceDetector::kMaxWaves waves.
+    RaceDetector *detector = nullptr;
+    for (auto *wf : notified) {
+      if (WaveRaceState *race = tracked_race_state(*wf)) {
+        detector = race->getDetector();
+        break;
+      }
+    }
+    if (!detector)
+      return;
     std::array<WaveId, RaceDetector::kMaxWaves> waves;
     size_t count = 0;
-    RaceDetector *detector = nullptr;
-    for (auto *wf : wavefronts) {
+    for (auto *wf : armed) {
       WaveRaceState *race = tracked_race_state(*wf);
       if (!race)
         continue;
-      assert(!detector || detector == race->getDetector());
+      assert(detector == race->getDetector());
       assert(count < waves.size());
-      detector = race->getDetector();
       waves[count++] = race->getWaveId();
     }
-    if (detector)
-      detector->barrierRoundCompleted(roundId(round), std::span(waves.data(), count),
-                                      wholeWorkgroup);
+    detector->barrierRoundCompleted(roundId(round), std::span(waves.data(), count), wholeWorkgroup);
     return;
   }
   // A cluster round's members span workgroups, and so detectors. Each detector
   // orders only its own waves; ordering between workgroups is not modeled.
   std::vector<std::pair<RaceDetector *, std::vector<WaveId>>> members;
-  for (auto *wf : wavefronts) {
-    WaveRaceState *race = tracked_race_state(*wf);
-    if (!race)
-      continue;
-    RaceDetector *detector = race->getDetector();
+  const auto entry = [&](RaceDetector *detector) -> std::vector<WaveId> & {
     auto it = std::ranges::find(members, detector, &decltype(members)::value_type::first);
     if (it == members.end())
       it = members.insert(members.end(), {detector, {}});
-    it->second.push_back(race->getWaveId());
-  }
+    return it->second;
+  };
+  for (auto *wf : notified)
+    if (WaveRaceState *race = tracked_race_state(*wf))
+      entry(race->getDetector());
+  for (auto *wf : armed)
+    if (WaveRaceState *race = tracked_race_state(*wf))
+      entry(race->getDetector()).push_back(race->getWaveId());
   for (auto &[detector, waves] : members)
     detector->barrierRoundCompleted(roundId(round), waves, wholeWorkgroup);
 }

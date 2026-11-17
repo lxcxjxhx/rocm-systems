@@ -145,7 +145,8 @@ public:
 
   void onAmdgpuBarrierSignaled(const amdgpu::Wavefront &wf, const BarrierRound &round) override;
 
-  void onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefront *> wavefronts,
+  void onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefront *> notified,
+                                     std::span<amdgpu::Wavefront *> armed,
                                      const BarrierRound &round) override;
 
   void onAmdgpuBarrierWaitPassed(const amdgpu::Wavefront &wf, const BarrierRound &round) override;
