@@ -16,7 +16,8 @@ id comes from its file name (0300_memory_chart.yaml is panel 300), a table's id 
 position in the panel (301 is the first table), and a row's numeric id (3.1.0) from its
 position in the table.
 
-Until the cutover, only tools and tests read the views.
+Until the cutover, analyze reads only the built-in top stats view (--list-stats) and
+tools read the rest; tools/validate_views.py checks the files.
 Standard library and the vendored YAML only: profile mode imports it.
 """
 
