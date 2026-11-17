@@ -533,7 +533,7 @@ TEST_F(GinFinalizeTest, AnvilSdma_FabricPodNeedsEveryRankOptIn) {
   fake_.lastCtx = anvil;
   addActiveBackend(anvil);
   addActiveBackend(proxy);
-  struct ncclGinState* ginState = &sharedRes_->ginState;
+  struct ncclGinState* ginState = &comm_.ginState;
   ginState->backends[0].ginType = NCCL_GIN_TYPE_ANVIL_SDMA;
   ginState->backends[1].ginType = NCCL_GIN_TYPE_PROXY;
   topo_->nHosts = 2;
@@ -560,7 +560,7 @@ TEST_F(GinFinalizeTest, AnvilSdma_FabricPodVoteFailurePropagates) {
   void* anvil = std::malloc(8);
   fake_.lastCtx = anvil;
   addActiveBackend(anvil);
-  struct ncclGinState* ginState = &sharedRes_->ginState;
+  struct ncclGinState* ginState = &comm_.ginState;
   ginState->backends[0].ginType = NCCL_GIN_TYPE_ANVIL_SDMA;
   topo_->nHosts = 2;
   comm_.nRanks = 8;
