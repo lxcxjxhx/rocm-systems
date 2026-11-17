@@ -2176,7 +2176,7 @@ TEST(ExecutionPluginTest, BarrierSignalAndWaitLockOnlyForSerialHotHooks) {
     EXPECT_EQ(test::ExecutionPluginGroupTestAccess::callback_lock_acquisitions(group),
               before + (serial ? 2 : 0));
 
-    group.onAmdgpuBarrierRoundCompleted(members, round);
+    group.onAmdgpuBarrierRoundResolved(members, members, round);
     EXPECT_EQ(test::ExecutionPluginGroupTestAccess::callback_lock_acquisitions(group),
               before + (serial ? 3 : 1));
   }
@@ -2200,7 +2200,7 @@ TEST(ExecutionPluginTest, BarrierRoundResolvedTakesTheCallbackLockOnce) {
   ASSERT_TRUE(group.add(std::move(plugin)));
   const uint64_t before = test::ExecutionPluginGroupTestAccess::callback_lock_acquisitions(group);
 
-  group.onAmdgpuBarrierRoundResolved(members, round);
+  group.onAmdgpuBarrierRoundResolved(members, members, round);
 
   EXPECT_EQ(test::ExecutionPluginGroupTestAccess::callback_lock_acquisitions(group), before + 1);
   ASSERT_EQ(plugin_ptr->events.size(), 2u);

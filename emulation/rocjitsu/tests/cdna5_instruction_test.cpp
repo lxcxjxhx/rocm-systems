@@ -1036,8 +1036,9 @@ TEST_F(Gfx1250SplitBarrierHookTest, WaitBeforeCompletionPassesAfterRoundComplete
 }
 
 // The completion bit is a flag, not a count (CDNA5 ISA 5.6.1): wave 0's bit,
-// set by round 0, is still set when round 1 completes, so its wait passes for
-// round 0 and its next wait parks.
+// set by round 0, is still set when round 1 completes, so round 1 notifies
+// both waves but sets only wave 1's bit. Wave 0's wait passes for round 0 and
+// its next wait parks.
 TEST_F(Gfx1250SplitBarrierHookTest, WaitPassedReportsRoundThatSetTheBit) {
   const BarrierRound round0 = workgroupRound(0);
   const BarrierRound round1 = workgroupRound(1);
@@ -1056,7 +1057,7 @@ TEST_F(Gfx1250SplitBarrierHookTest, WaitPassedReportsRoundThatSetTheBit) {
                                 completed({wf0, wf1}, round0), waitPassed(wf1, round0),
                                 signaled(wf1, round1), signaled(wf0, round1),
                                 resolved({wf0, wf1}, BarrierKind::Workgroup),
-                                completed({wf0, wf1}, round1), waitPassed(wf0, round0)}));
+                                completed({wf1}, round1), waitPassed(wf0, round0)}));
 }
 
 // S_BARRIER_JOIN clears the joining wave's completion bit and S_BARRIER_INIT
@@ -1086,7 +1087,7 @@ TEST_F(Gfx1250SplitBarrierHookTest, JoinAndInitDiscardPendingRound) {
       (std::vector<Event>{signaled(wf0, first), signaled(wf1, first),
                           resolved({wf0, wf1}, BarrierKind::Named), completed({wf0, wf1}, first),
                           signaled(wf0, second), signaled(wf1, second),
-                          resolved({wf0, wf1}, BarrierKind::Named), completed({wf0, wf1}, second),
+                          resolved({wf0, wf1}, BarrierKind::Named), completed({wf0}, second),
                           waitPassed(wf0, second), waitPassed(wf1, first)}));
 }
 

@@ -404,8 +404,13 @@ public:
   virtual void onAmdgpuBarrierSignaled(const amdgpu::Wavefront & /*wf*/,
                                        const BarrierRound & /*round*/) {}
 
-  /// Called when `round` completes, with the waves notified of it. Fires
-  /// immediately after onAmdgpuBarrierResolved(), with the same waves.
+  /// Called when `round` completes, with the waves whose completion bit the
+  /// round set: the waves whose next wait on this barrier is released by it. A
+  /// wave whose bit was still set by an earlier round is not included; its
+  /// wait passes for that round. Fires immediately after
+  /// onAmdgpuBarrierResolved(), which lists every wave notified. A round that
+  /// notifies no wave, such as a named round no live wave has joined, reports
+  /// neither.
   /// Infrequent hook; see the concurrency contract on requires_serial_hot_hooks().
   virtual void onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefront *> /*wavefronts*/,
                                              const BarrierRound & /*round*/) {}

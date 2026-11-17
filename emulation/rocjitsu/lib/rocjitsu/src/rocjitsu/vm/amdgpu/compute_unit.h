@@ -1974,10 +1974,15 @@ protected:
     std::array<BarrierCounter, kMaxNamedBarriers + 1> named{};
     std::array<BarrierCounter, 2> workgroup{};
   };
-  /// The waves a completed round notified, and those it released from a
-  /// pending s_barrier_wait.
+  /// The waves of a completed round.
   struct BarrierCompletion {
+    /// Every member the round notified.
     std::vector<Wavefront *> members;
+    /// The members whose completion bit the round set, so their next wait is
+    /// for this round. A member whose bit was still set by an earlier round
+    /// keeps that round (CDNA5 ISA 5.6.1).
+    std::vector<Wavefront *> armed;
+    /// The members released from a pending s_barrier_wait.
     std::vector<Wavefront *> woken;
   };
   /// The round `generation` of the barrier with `completion_bit`.
@@ -1987,9 +1992,9 @@ protected:
   /// release the members waiting on it. Plugins are not notified.
   BarrierCompletion complete_barrier(uint32_t dispatch_id, uint32_t wg_id, uint8_t completion_bit,
                                      uint64_t generation, uint32_t named_barrier_id = 0);
-  /// Report a completed round: onAmdgpuBarrierResolved() and
-  /// onAmdgpuBarrierRoundCompleted() under one plugin lock, then
-  /// onAmdgpuBarrierWaitPassed() for each woken member.
+  /// Report a completed round: onAmdgpuBarrierResolved() for its members and
+  /// onAmdgpuBarrierRoundCompleted() for its armed members under one plugin
+  /// lock, then onAmdgpuBarrierWaitPassed() for each woken member.
   static void notify_barrier_complete(ExecutionPluginGroup &plugins, BarrierCompletion &completion,
                                       const BarrierRound &round);
   /// Complete the current round of `barrier`, advance its generation and

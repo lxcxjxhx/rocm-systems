@@ -1049,8 +1049,10 @@ ComputeUnitCore::complete_barrier(uint32_t dispatch_id, uint32_t wg_id, uint8_t 
       continue;
     // The bit is a flag: a wave that has not yet waited on an earlier round
     // keeps that round (CDNA5 ISA 5.6.1).
-    if (!candidate->barrier_complete_[completion_bit])
+    if (!candidate->barrier_complete_[completion_bit]) {
       candidate->barrier_complete_generation_[completion_bit] = generation;
+      completion.armed.push_back(candidate.get());
+    }
     candidate->barrier_complete_[completion_bit] = true;
     completion.members.push_back(candidate.get());
   }
@@ -1071,7 +1073,7 @@ void ComputeUnitCore::notify_barrier_complete(ExecutionPluginGroup &plugins,
                                               const BarrierRound &round) {
   if (completion.members.empty())
     return;
-  plugins.onAmdgpuBarrierRoundResolved(completion.members, round);
+  plugins.onAmdgpuBarrierRoundResolved(completion.members, completion.armed, round);
   for (auto *member : completion.woken)
     plugins.onAmdgpuBarrierWaitPassed(*member, round);
 }
@@ -2293,6 +2295,7 @@ void ComputeUnitCore::update_wf_states() {
       // A single-instruction barrier is a split barrier whose signal and wait
       // coincide: every member signals, the round completes, and every member
       // passes its wait.
+      completion.armed = completion.members;
       completion.woken = completion.members;
       auto group = barrier_wgs_.find(wg_key(did, wg));
       const uint64_t generation =

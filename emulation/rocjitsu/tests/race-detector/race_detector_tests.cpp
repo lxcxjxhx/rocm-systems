@@ -3048,3 +3048,22 @@ TEST(RaceDetector, SplitBarrier_SignalThenEndReleasesOnlyWhatTheSignalDid) {
   b.checkLdsRead(/*wave=*/1, /*lane=*/0, kX, /*bytes=*/4);
   EXPECT_EQ(b.raceCount(), 0);
 }
+
+// A round is waited for only by the waves whose completion bit it set. Wave 0
+// signals every round and never waits, so only round 0 set its bit; the later
+// rounds close once wave 1 has waited.
+TEST(RaceDetector, SplitBarrier_MemberThatNeverWaitsLeavesOneOpenRound) {
+  RaceTestBuilder b(/*numWaves=*/2, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  for (uint64_t generation = 0; generation < 4; ++generation) {
+    const BarrierRoundId round = RaceTestBuilder::workgroupRound(generation);
+    b.signal(0, round);
+    b.signal(1, round);
+    // Wave 0's bit is still set by round 0, so later rounds arm only wave 1.
+    b.completeRound(round, generation == 0 ? std::vector<int>{0, 1} : std::vector<int>{1});
+    b.waitPassed(1, round);
+    EXPECT_EQ(b.openBarrierRounds(), 1u);
+  }
+  // Wave 0's wait passes for round 0 and closes it.
+  b.waitPassed(0, RaceTestBuilder::workgroupRound(0));
+  EXPECT_EQ(b.openBarrierRounds(), 0u);
+}

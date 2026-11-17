@@ -2142,6 +2142,7 @@ void CommandProcessor::complete_cluster_barrier_round(
   for (auto [cu, peer_wg_id] : peers) {
     auto peer = cu->complete_barrier(dispatch_id, peer_wg_id, completion_bit, generation);
     completion.members.insert(completion.members.end(), peer.members.begin(), peer.members.end());
+    completion.armed.insert(completion.armed.end(), peer.armed.begin(), peer.armed.end());
     completion.woken.insert(completion.woken.end(), peer.woken.begin(), peer.woken.end());
   }
   ComputeUnitCore::notify_barrier_complete(

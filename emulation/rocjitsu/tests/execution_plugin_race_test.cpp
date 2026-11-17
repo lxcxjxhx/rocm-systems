@@ -71,8 +71,7 @@ void report_workgroup_barrier(ExecutionPluginGroup &group, std::span<Wavefront *
                            .generation = 0};
   for (auto *wave : members)
     group.onAmdgpuBarrierSignaled(*wave, round);
-  group.onAmdgpuBarrierResolved(members, round.kind);
-  group.onAmdgpuBarrierRoundCompleted(members, round);
+  group.onAmdgpuBarrierRoundResolved(members, members, round);
   for (auto *wave : members)
     group.onAmdgpuBarrierWaitPassed(*wave, round);
 }
@@ -763,8 +762,7 @@ protected:
   /// Complete `round` for `members`, reporting it through both completion
   /// hooks as the simulator does.
   void complete(const BarrierRound &round, std::span<Wavefront *> members) {
-    fixture.plugin_group_->onAmdgpuBarrierResolved(members, round.kind);
-    fixture.plugin_group_->onAmdgpuBarrierRoundCompleted(members, round);
+    fixture.plugin_group_->onAmdgpuBarrierRoundResolved(members, members, round);
   }
 
   void wait_passed(int wave, const BarrierRound &round) {
@@ -6715,8 +6713,7 @@ public:
                              .generation = next_generation_++};
     for (auto *wave : waves_)
       f_.plugin_group_->onAmdgpuBarrierSignaled(*wave, round);
-    f_.plugin_group_->onAmdgpuBarrierResolved(waves_, BarrierKind::Workgroup);
-    f_.plugin_group_->onAmdgpuBarrierRoundCompleted(waves_, round);
+    f_.plugin_group_->onAmdgpuBarrierRoundResolved(waves_, waves_, round);
     for (auto *wave : waves_)
       f_.plugin_group_->onAmdgpuBarrierWaitPassed(*wave, round);
   }

@@ -562,24 +562,18 @@ public:
     });
   }
 
-  void onAmdgpuBarrierRoundCompleted(std::span<amdgpu::Wavefront *> wavefronts,
-                                     const BarrierRound &round) {
-    dispatch_with_plugin_lock([&]() {
-      for (auto &entry : plugins_)
-        entry.plugin->onAmdgpuBarrierRoundCompleted(wavefronts, round);
-    });
-  }
-
-  /// Report a completed round through onAmdgpuBarrierResolved(), then
-  /// onAmdgpuBarrierRoundCompleted(), under one acquisition of the callback
-  /// lock.
-  void onAmdgpuBarrierRoundResolved(std::span<amdgpu::Wavefront *> wavefronts,
+  /// Report a completed round: onAmdgpuBarrierResolved() with every wave it
+  /// notified, then onAmdgpuBarrierRoundCompleted() with the waves whose
+  /// completion bit it set, under one acquisition of the callback lock. The
+  /// simulator reports every completion through this entry.
+  void onAmdgpuBarrierRoundResolved(std::span<amdgpu::Wavefront *> notified,
+                                    std::span<amdgpu::Wavefront *> armed,
                                     const BarrierRound &round) {
     dispatch_with_plugin_lock([&]() {
       for (auto &entry : plugins_)
-        entry.plugin->onAmdgpuBarrierResolved(wavefronts, round.kind);
+        entry.plugin->onAmdgpuBarrierResolved(notified, round.kind);
       for (auto &entry : plugins_)
-        entry.plugin->onAmdgpuBarrierRoundCompleted(wavefronts, round);
+        entry.plugin->onAmdgpuBarrierRoundCompleted(armed, round);
     });
   }
 
