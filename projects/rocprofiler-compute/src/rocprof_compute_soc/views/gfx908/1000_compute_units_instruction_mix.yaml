@@ -1,0 +1,59 @@
+view: Compute Units - Instruction Mix
+alias: cu_ins
+tables:
+- title: Overall Instruction Mix
+  header:
+    metric: Metric
+    avg: Avg
+    min: Min
+    max: Max
+    unit: Unit
+  metrics:
+  - metric: lds.insts
+    label: LDS
+  - metric: compute.inst_mix_salu
+    label: SALU
+  - metric: compute.inst_mix_smem
+    label: SMEM
+  - metric: compute.inst_mix_branch
+    label: Branch
+- title: VALU Arithmetic Instruction Mix
+  header:
+    metric: Metric
+    avg: Avg
+    min: Min
+    max: Max
+    unit: Unit
+  metrics: []
+- title: VMEM Instruction Mix
+  header:
+    metric: Metric
+    avg: Avg
+    min: Min
+    max: Max
+    unit: Unit
+  metrics:
+  - metric: ta.global_insts
+    label: Global/Generic Instr
+  - metric: ta.global_rd_insts
+    label: Global/Generic Read
+  - metric: ta.global_wr_insts
+    label: Global/Generic Write
+  - metric: ta.global_atomic_insts
+    label: Global/Generic Atomic
+  - metric: ta.buffer_insts
+    label: Spill/Stack Instr
+  - metric: ta.buffer_rd_insts
+    label: Spill/Stack Read
+  - metric: ta.buffer_wr_insts
+    label: Spill/Stack Write
+  - metric: ta.buffer_atomic_insts
+    label: Spill/Stack Atomic
+- title: MFMA Arithmetic Instruction Mix
+  header:
+    metric: Metric
+    avg: Avg
+    min: Min
+    max: Max
+    unit: Unit
+  metrics: []

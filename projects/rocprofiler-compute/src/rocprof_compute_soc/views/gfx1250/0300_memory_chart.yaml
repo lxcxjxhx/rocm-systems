@@ -1,0 +1,214 @@
+view: Memory Chart
+alias: memchart
+tables:
+- title: Instruction Cache
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: l1i.req
+    label: ICache Requests
+    round: 0
+  - metric: l1i.icache_util
+    round: 0
+  - metric: l1i.hits_per_req
+    label: ICache Hit Rate
+    round: 0
+  - metric: l1i.icache_lat
+    round: 0
+  - metric: l1i.icache_req_stall_rate
+    round: 0
+  - metric: l1i.gl1_rd_bw
+    label: ICache-GL1 Read Bandwidth
+  - metric: l1i.icache_gl1_req_lat
+    round: 0
+- title: Scalar Data Cache
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: sl1d.req
+    label: Dcache Requests
+    round: 0
+  - metric: sl1d.dcache_util
+    round: 0
+  - metric: sl1d.hits_per_req
+    label: Dcache Hit Rate
+    round: 0
+  - metric: sl1d.dcache_lat
+    round: 0
+  - metric: sl1d.dcache_req_stall_rate
+    round: 0
+  - metric: sl1d.req_bw
+    label: Dcache Request Bandwidth
+  - metric: sl1d.gl1_rd_bw
+    label: Dcache-GL1 Read Bandwidth
+  - metric: sl1d.dcache_gl1_req_lat
+    round: 0
+- title: GL0 Cache (Vector L0)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: gl0.util
+    round: 0
+  - metric: gl0.total_req_rd
+    label: GL0 Read Requests
+    round: 0
+  - metric: gl0.total_req_wr
+    label: GL0 Write Requests
+    round: 0
+  - metric: gl0.atomic_req
+    round: 0
+  - metric: gl0.hit_rate
+    round: 0
+- title: LDS (Local Data Share)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: txa.lds_load_insts
+    label: LDS Load Requests
+    round: 0
+  - metric: txa.lds_store_insts
+    label: LDS Store Requests
+    round: 0
+  - metric: txa.lds_atomics_insts
+    label: LDS Atomic Requests
+    round: 0
+  - metric: txa.async_load_inst
+    label: Async Load Requests
+    round: 0
+  - metric: txa.async_store_inst
+    label: Async Store Requests
+    round: 0
+  - metric: lds.util
+    round: 0
+  - metric: lds.bank_conflict_stall_rate
+    round: 0
+  - metric: txa.lds_bw_load
+    label: LDS Load Bandwidth
+  - metric: txa.lds_bw_store
+    label: LDS Store Bandwidth
+  - metric: txa.lds_bw_atomics
+    label: LDS Atomic Bandwidth
+  - metric: txa.async_load_bw
+    label: Async Load Bandwidth
+  - metric: txa.async_store_bw
+    label: Async Store Bandwidth
+  - metric: txa.tdm_load_bw
+  - metric: txa.tdm_store_bw
+  - metric: txa.tdm_async_load_insts
+    label: TDM Load Requests
+    round: 0
+  - metric: txa.tdm_async_store_insts
+    label: TDM Store Requests
+    round: 0
+- title: GL0-GL1 Interface
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: gl0.gl1_rd_bw
+  - metric: gl0.gl1_wr_bw
+  - metric: gl0.gl1_atomic_bw
+  - metric: gl1.gl1a_util
+    round: 0
+  - metric: gl1.util
+    label: GL1C Utilization
+    round: 0
+  - metric: gl1.gl1c_buffer_full_stall
+    round: 0
+- title: GLARB (GL1-GL2 Arbiter)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: glarb.glarba_util
+    round: 0
+  - metric: glarb.glarbc_util
+    round: 0
+  - metric: glarb.glarbc_buffer_full_stall
+    round: 0
+  - metric: gl1.gl1c_glarb_rd_bw
+    label: GL1-GLARB Read Bandwidth
+  - metric: gl1.gl1c_glarb_wr_bw
+    label: GL1-GLARB Write Bandwidth
+  - metric: glarb.glarbc_req_bw_rd
+    label: GLARB-GL2 Read Bandwidth
+  - metric: glarb.glarbc_req_bw_wr
+    label: GLARB-GL2 Write Bandwidth
+  - metric: glarb.gl2_atomic_bw
+- title: GL2 Cache (L2)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: gl2.gl2a_util
+    round: 0
+  - metric: gl2.hit_rate
+    label: GL2C Hit Rate
+    round: 0
+  - metric: gl2.ea_hbm_bw_rd
+    label: GL2-EA Read Bandwidth
+  - metric: gl2.ea_hbm_bw_wr
+    label: GL2-EA Write Bandwidth
+  - metric: gl2.ea_hbm_bw_atomic
+    label: GL2-EA Atomic Bandwidth
+- title: EA to HBM
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: ea.util
+    round: 0
+  - metric: ea.dram_rd_bw
+    label: DRAM Read Bandwidth
+  - metric: ea.dram_wr_bw
+    label: DRAM Write Bandwidth
+  - metric: ea.io_bw_rd
+    label: IO Read Bandwidth
+  - metric: ea.io_bw_wr
+    label: IO Write Bandwidth
+  - metric: ea.hdm_bw_rd
+    label: HDM Read Bandwidth
+  - metric: ea.hdm_bw_wr
+    label: HDM Write Bandwidth
+  - metric: ea.gmi_bw_rd
+    label: GMI Read Bandwidth
+  - metric: ea.gmi_bw_wr
+    label: GMI Write Bandwidth
+  - metric: ea.stalled_by_sdp
+    label: EA Stall Rate
+    round: 0
+- title: Workgroup Processors (WGPs)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: wave.occupancy_pct
+    label: Wavefront Occupancy
+    round: 1
+  - metric: dispatch.vgprs
+    label: VGPR
+    round: 0
+  - metric: dispatch.sgprs
+    label: SGPR
+    round: 0
+  - metric: dispatch.lds_allocation
+    round: 0
+  - metric: dispatch.scratch_allocation_per_wave
+    label: Scratch Allocation
+    round: 3
+  - metric: dispatch.workgroups_per_wgp
+    label: Workgroups
+    round: 1

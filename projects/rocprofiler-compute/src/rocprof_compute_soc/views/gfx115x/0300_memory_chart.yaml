@@ -1,0 +1,126 @@
+view: Memory Chart
+alias: memchart
+tables:
+- title: Instruction Cache
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: l1i.req
+    label: ICache Requests
+  - metric: l1i.hit_rate_excl_dup
+    label: ICache Hit Rate
+  - metric: l1i.gl1_rd_bw
+    label: ICache-GL1 Read Bandwidth
+- title: Scalar Data Cache
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: sl1d.req
+    label: DCache Requests
+  - metric: sl1d.hit_rate_excl_dup
+    label: DCache Hit Rate
+  - metric: sl1d.gl1_rd_bw
+    label: DCache-GL1 Read Bandwidth
+- title: TCP Cache (GL0 Vector Cache)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: gl0.rd_req
+    label: TCP Read Requests
+  - metric: gl0.wr_req
+    label: TCP Write Requests
+  - metric: gl0.hit_rate
+    label: GL0 Cache Hit Rate (TCP Cache)
+  - metric: gl0.bw
+    label: GL0 Cache BW (TCP Cache)
+- title: LDS (Local Data Share)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: compute.insts_lds
+    label: LDS Req
+  - metric: lds.util
+  - metric: lds.bank_conflict_rate
+  - metric: lds.theoretical_bw
+    label: LDS Estimated Bandwidth
+- title: TCP-GL1 Interface
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: gl0.gl1_rd_bw
+    label: TCP-GL1 Read Bandwidth
+  - metric: gl0.gl1_wr_bw
+    label: TCP-GL1 Write Bandwidth
+- title: GL1 Cache (L1)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: gl1.util
+  - metric: gl1.hit_rate
+    label: GL1 Cache Hit Rate
+  - metric: gl1.stall_gl2_backpressure
+- title: GL1-GL2 Interface
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: gl1.gl2_rd_bw
+  - metric: gl1.gl2_wr_bw
+- title: GL2 Cache (L2)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: gl2.util
+  - metric: gl2.hit_rate
+  - metric: gl2.fabric_rd_bw
+    label: GL2-Fabric Read BW
+  - metric: gl2.fabric_wr_bw
+    label: GL2-Fabric Write BW
+- title: Graphics Core Efficiency Arbiter (GCEA) to System Memory
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: gcea.sysarb_util
+  - metric: gcea.sysarb_stall_rate
+  - metric: gcea.dram_rd_bw
+  - metric: gcea.dram_wr_bw
+- title: Workgroup Processors (WGPs)
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: wave.occupancy_pct
+    label: Wavefront Occupancy
+    round: 1
+  - metric: dispatch.vgprs
+    label: VGPR
+    round: 0
+  - metric: dispatch.sgprs
+    label: SGPR
+    round: 0
+  - metric: dispatch.lds_allocation
+    round: 0
+  - metric: dispatch.scratch_allocation_per_wave
+    label: Scratch Allocation
+    round: 3
+  - metric: dispatch.workgroups_per_wgp
+    label: Workgroups
+    round: 1

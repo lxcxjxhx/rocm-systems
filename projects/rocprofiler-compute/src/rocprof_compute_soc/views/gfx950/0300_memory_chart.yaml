@@ -1,0 +1,114 @@
+view: Memory Chart
+alias: memchart
+tables:
+- title: Memory Chart
+  header:
+    metric: Metric
+    value: Value
+    unit: Unit
+  metrics:
+  - metric: wave.occupancy_pct
+    label: Wavefront Occupancy
+    round: 1
+  - metric: dispatch.vgprs
+    label: VGPR
+    round: 0
+  - metric: dispatch.sgprs
+    label: SGPR
+    round: 0
+  - metric: dispatch.lds_allocation
+    round: 0
+  - metric: dispatch.scratch_allocation_per_wave
+    label: Scratch Allocation
+    round: 3
+  - metric: spi.workgroups_per_cu
+    label: Workgroups
+    round: 1
+  - metric: ta.global_rd_insts
+    label: Flat Read
+    round: 0
+  - metric: ta.global_wr_insts
+    label: Flat Write
+    round: 0
+  - metric: ta.global_atomic_insts
+    label: Flat Atomic
+    round: 0
+  - metric: ta.buffer_rd_insts
+    label: Buffer Read
+    round: 0
+  - metric: ta.buffer_wr_insts
+    label: Buffer Write
+    round: 0
+  - metric: ta.buffer_atomic_insts
+    label: Buffer Atomic
+    round: 0
+  - metric: lds.insts
+    label: LDS Req
+    round: 0
+  - metric: lds.util
+    label: LDS Util
+    round: 0
+  - metric: lds.load
+    label: LDS Read
+    round: 0
+  - metric: lds.store
+    label: LDS Write
+    round: 0
+  - metric: lds.atomic
+    label: LDS Atomic
+    round: 0
+  - metric: vl1d.hit_rate
+    label: VL1 Hit
+    round: 0
+  - metric: vl1d.coalescing
+    label: VL1 Coalesce
+    round: 0
+  - metric: vl1d.l2_rd_bw
+    label: VL1_L2 Read BW
+  - metric: vl1d.l2_wr_bw
+    label: VL1_L2 Write BW
+  - metric: vl1d.l2_atomic_bw
+    label: VL1_L2 Atomic BW
+  - metric: sl1d.req
+    label: sL1D Rd
+    round: 0
+  - metric: sl1d.hits_per_req
+    label: sL1D Hit
+    round: 0
+  - metric: sl1d.l2_rd_bw
+    label: sL1D_L2 Read BW
+  - metric: l1i.req
+    label: IL1 Fetch
+    round: 0
+  - metric: l1i.hits_per_req
+    label: IL1 Hit
+    round: 0
+  - metric: l1i.l2_bw
+    label: IL1_L2 Read BW
+  - metric: l2.hit_rate
+    label: L2 Hit
+    round: 0
+  - metric: fabric.rd_bw
+    label: L2-Fabric Read BW
+  - metric: fabric.wr_atomic_bw
+    label: L2-Fabric Write and Atomic BW
+  - metric: fabric.hbm_rd_bw
+    label: HBM Read BW
+  - metric: fabric.hbm_wr_bw
+    label: HBM Write BW
+  - metric: fabric.hbm_atomic_bw
+    label: HBM Atomic BW
+  - metric: fabric.hbm_wr_atomic_bw
+    label: HBM Write and Atomic BW
+  - metric: fabric.xgmi_rd_bw
+    label: xGMI Read BW
+  - metric: fabric.xgmi_wr_bw
+    label: xGMI Write BW
+  - metric: fabric.xgmi_atomic_bw
+    label: xGMI Atomic BW
+  - metric: fabric.pcie_rd_bw
+    label: PCIe Read BW
+  - metric: fabric.pcie_wr_bw
+    label: PCIe Write BW
+  - metric: fabric.pcie_atomic_bw
+    label: PCIe Atomic BW
