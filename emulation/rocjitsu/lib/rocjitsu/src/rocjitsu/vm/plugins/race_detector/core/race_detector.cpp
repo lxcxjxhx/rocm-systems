@@ -105,6 +105,16 @@ RaceDetector::BarrierRoundState &RaceDetector::roundState(BarrierRoundId round) 
   slot->signalled = 0;
   slot->clock.assign(waveCount(), 0);
   ++openRounds_;
+  // A named barrier's counted signals can be discarded by S_BARRIER_INIT, and
+  // its round can complete while no live wave has joined it; neither is
+  // reported. A newer generation shows that an older round which has not
+  // completed never will.
+  if (round.namedId != 0) {
+    for (BarrierRoundState &older : rounds_)
+      if (older.open && !older.completed && older.id.barrier == round.barrier &&
+          older.id.namedId == round.namedId && older.id.generation < round.generation)
+        closeRound(older);
+  }
   return *slot;
 }
 

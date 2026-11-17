@@ -3067,3 +3067,23 @@ TEST(RaceDetector, SplitBarrier_MemberThatNeverWaitsLeavesOneOpenRound) {
   b.waitPassed(0, RaceTestBuilder::workgroupRound(0));
   EXPECT_EQ(b.openBarrierRounds(), 0u);
 }
+
+// S_BARRIER_INIT discards a named barrier's counted signals without a report,
+// and a named round can complete while no live wave has joined it. The next
+// generation's first signal closes the round that will never complete.
+TEST(RaceDetector, SplitBarrier_NewerNamedGenerationClosesAnUncompletedRound) {
+  RaceTestBuilder b(/*numWaves=*/2, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  b.signal(0, RaceTestBuilder::namedRound(1, 0));
+  EXPECT_EQ(b.openBarrierRounds(), 1u);
+  // Another named barrier's round is unaffected.
+  b.signal(1, RaceTestBuilder::namedRound(2, 0));
+  EXPECT_EQ(b.openBarrierRounds(), 2u);
+  const BarrierRoundId next = RaceTestBuilder::namedRound(1, 1);
+  b.signal(0, next);
+  EXPECT_EQ(b.openBarrierRounds(), 2u);
+  b.signal(1, next);
+  b.completeRound(next, {0, 1});
+  b.waitPassed(0, next);
+  b.waitPassed(1, next);
+  EXPECT_EQ(b.openBarrierRounds(), 1u);
+}
