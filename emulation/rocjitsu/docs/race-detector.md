@@ -294,8 +294,10 @@ following lifecycle:
 ### Barriers
 
 On gfx1250 a barrier is split into `s_barrier_signal`, which does not block and
-waits for no memory counter, and `s_barrier_wait`, which blocks until every
-member has signalled or ended (CDNA5 ISA 5.6 and 15.3). A barrier therefore
+waits for no memory counter, and `s_barrier_wait`, which blocks until the
+barrier completes: for a workgroup barrier, once every wave has signalled or
+ended; for a named barrier, once it has counted as many signals as its member
+count (CDNA5 ISA 5.6 and 15.3). A barrier therefore
 orders a completed event before another wave's access only when:
 
 - the issuing wave completed the event (by a wait or counter-capacity
@@ -312,10 +314,18 @@ every later workgroup round it had not signalled, because such a round cannot
 complete until the wave ends; named and cluster rounds, which can complete
 without it, do not. A round the wave had signalled before ending can also
 complete without its end, so it orders only what that signal released. A named
-round orders events only for the waves that joined it. A cluster round orders
-events among the waves of each workgroup; ordering between workgroups is not
-modeled. The simulator reports each counted signal, each completed round and
-each passed wait to plugins.
+round orders events only for the waves that joined it. A cluster round counts
+one signal from each workgroup, so within a workgroup it releases what the
+signalling wave had completed or acquired, for example through an earlier
+workgroup barrier; ordering between workgroups is not modeled. The simulator
+reports each counted signal, each completed round and each passed wait to
+plugins.
+
+A completed LDS event stays in the history, and is still checked, until every
+other live wave of the workgroup has acquired it. A workgroup in which some
+wave never passes a barrier wait, or whose waves synchronize only through
+named barriers among subsets, therefore keeps its completed events until those
+waves end, and its cross-wave checks scan them.
 
 Targets with a single `s_barrier` instruction are handled the same way, with
 every member's signal and wait at the point where the barrier resolves.
