@@ -115,3 +115,38 @@ scalar FP-status model; arithmetic and conversions still reject explicit mode 3
 where reporting is not qualified. Scalar comparisons and rounding support mode 3.
 The VM owns SGPR/SCC writes and trap delivery. gfx1150 retains its legacy scalar
 FP implementation pending migration; gfx1250 has its own documented library policy.
+
+## Older-profile integer dot products
+
+Rocjitsu routes the integer DOT2/DOT4/DOT8 forms present on gfx908, gfx90a,
+gfx1030 and gfx1150 through the existing scalar, AVX2 and AVX-512-v4 backends.
+This includes the old-destination DOTC forms where present, half selectors,
+signedness and saturation. Gfx1010 has no such integer-dot instructions.
+Floating-point dot products on these profiles remain a separate migration.
+
+## Older host-model floating dots
+
+gfx908, gfx90a and gfx1030 FP16-input FP32-output DOT2/DOT2C use the same
+pair-sum-then-accumulate model as gfx942, including packed source selectors,
+modifiers, destination overlap and partial EXEC. Compatibility and Loose use
+the existing scalar, AVX2 and AVX-512-v4 implementations; strict bit-exact modes
+remain unsupported. This transfers the inherited software model without new
+empirical qualification. gfx1150's distinct gfx11 model remains a separate
+migration and keeps the shared packed-dot generator live. The superseded
+host-model DOTC SIMD helper has no executable users and is removed.
+
+## gfx1150 floating dots
+
+FP16/BF16 DOT2 with FP32 or true16 output and the FP16 DOT2ACC use the
+existing gfx11 arithmetic in both waves. Compatibility retains rocjitsu's
+integer-grid accumulation, NaN and packed narrowing policies; Loose uses
+the existing scalar, AVX2 and AVX-512 arithmetic. Packed-output Compatibility
+retains the inherited scalar grid model. Guest rounding/denormal controls
+remain ignored; FP16 overflow, inline replication, modifiers, selected
+C/D halves and DPP continue through the shared adapters. This inherits the
+existing software model, not a new gfx1150 hardware qualification.
+
+The old true16-dot emitter loses its last production users and is deleted.
+Its semantic classes now route directly to the shared library binding; the
+older HostF32 packed-dot and accumulating emitters remain live on CDNA1/2
+and RDNA2 until their independent migration.

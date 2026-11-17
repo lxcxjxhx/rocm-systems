@@ -17043,6 +17043,8 @@ class CodeGenerator:
                                 'V_MAD_MIXHI_F16',
                             }
                         )
+                if self.isa_spec.arch_name in ('cdna1', 'cdna2', 'rdna2'):
+                    float_names |= DOT2_F32_NAMES
                 if self.isa_spec.arch_name.startswith('cdna'):
                     float_names |= (
                         CDNA_BINARY_SELECTION
@@ -17072,6 +17074,12 @@ class CodeGenerator:
                     'cdna4',
                     'cdna5',
                 ) and any(i.name in float_names for i in all_insts):
+                    cpp_includes.append(
+                        ('rocjitsu/isa/arch/amdgpu/shared/rj_arith_float_exec.h', False)
+                    )
+                if self.isa_spec.arch_name in ('cdna1', 'cdna2', 'rdna3_5') and any(
+                    i.name in DOT2_F32_NAMES | HALF_DOT_NAMES for i in all_insts
+                ):
                     cpp_includes.append(
                         ('rocjitsu/isa/arch/amdgpu/shared/rj_arith_float_exec.h', False)
                     )
@@ -17198,6 +17206,12 @@ class CodeGenerator:
                         for i in all_insts
                     )
                 )
+                uses_vector_arith |= self.isa_spec.arch_name in (
+                    'cdna1',
+                    'cdna2',
+                    'rdna2',
+                    'rdna3_5',
+                ) and any(i.name in INTEGER_DOT_NAMES for i in all_insts)
                 uses_vector_arith |= self.isa_spec.arch_name in (
                     'cdna4',
                     'cdna5',

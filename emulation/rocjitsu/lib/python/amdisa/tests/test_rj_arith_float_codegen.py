@@ -370,7 +370,7 @@ def test_dot4_formats_and_c_modifiers(name):
     )
 
 
-@pytest.mark.parametrize('arch, count', [('rdna3', 6), ('rdna4', 12)])
+@pytest.mark.parametrize('arch, count', [('rdna3', 6), ('rdna3_5', 6), ('rdna4', 12)])
 def test_generated_float_dot_methods_replace_all_legacy_paths(arch, count):
     root = (
         Path(__file__).resolve().parents[3]
@@ -397,7 +397,7 @@ def test_generated_float_dot_methods_replace_all_legacy_paths(arch, count):
     assert checked == count
 
 
-@pytest.mark.parametrize('arch', ['rdna3', 'rdna4'])
+@pytest.mark.parametrize('arch', ['rdna3', 'rdna3_5', 'rdna4'])
 @pytest.mark.parametrize('name', ['V_DOT2_F16_F16', 'V_DOT2_BF16_BF16'])
 def test_half_dot_packed_sources_and_partial_accumulator(arch, name):
     from amdisa.codegen.execute.rj_arith_float import gen_half_dot
@@ -421,7 +421,7 @@ def test_half_dot_packed_sources_and_partial_accumulator(arch, name):
     )
 
 
-@pytest.mark.parametrize('arch', ['rdna3', 'rdna4'])
+@pytest.mark.parametrize('arch', ['rdna3', 'rdna3_5', 'rdna4'])
 def test_generated_half_dot_regular_and_dpp_bodies_use_rj_arith(arch):
     source = (
         Path(__file__).resolve().parents[3]
@@ -1546,8 +1546,8 @@ def test_cdna_mixed_bf16_preserves_raw_inline_halves(name):
         )
 
 
-@pytest.mark.parametrize('arch', ['cdna3', 'cdna4'])
-def test_cdna_float_dot_bindings(arch):
+@pytest.mark.parametrize('arch', ['cdna1', 'cdna2', 'rdna2', 'cdna3', 'cdna4'])
+def test_host_model_float_dot_bindings(arch):
     from amdisa.codegen.execute.rj_arith_float import gen_float_dot32
 
     for fmt in ('F16', 'BF16'):
@@ -1566,7 +1566,7 @@ def test_cdna_float_dot_bindings(arch):
                         opsel_exprs=('low', 'high'),
                     )
                 )
-                if arch == 'cdna3' and fmt == 'BF16':
+                if arch != 'cdna4' and fmt == 'BF16':
                     assert body is None
                     continue
                 suffix = 'gfx942' if fmt == 'F16' else 'gfx950'
@@ -2403,3 +2403,50 @@ def test_gfx1250_selection_owns_its_numeric_only_compatibility_policy(name):
     for wave in (32, 64):
         assert f'rj_arith_{name.lower()}_w{wave}_gfx1250,' in body
     assert 'BinaryFpOperation' not in body
+
+
+@pytest.mark.parametrize('arch', ['cdna1', 'cdna2', 'rdna2'])
+def test_older_float_dot_generated_routes(arch):
+    root = (
+        Path(__file__).resolve().parents[3]
+        / 'rocjitsu/src/rocjitsu/isa/arch/amdgpu/generated'
+        / arch
+    )
+    checked = 0
+    for source in root.glob('*_exec.cpp'):
+        text = source.read_text()
+        for match in re.finditer(
+            r'void (VDot2(?:c)?F32F16\w+)::execute(?:_modifier)?_impl\([^)]*\)\s*\{',
+            text,
+        ):
+            end, depth = match.end(), 1
+            while depth:
+                depth += (text[end] == '{') - (text[end] == '}')
+                end += 1
+            body = text[match.end() : end - 1]
+            assert 'rj_arith_v_dot2_f32_f16_w64_gfx942' in body, match[1]
+            assert 'arith::execute_dot2_f32' in body, match[1]
+            assert 'ROCJITSU_TRY_SIMD' not in body, match[1]
+            assert 'amdgpu::execute_v_dot' not in body, match[1]
+            assert 'shared/rj_arith_float_exec.h' in text, source
+            checked += 1
+    assert checked == (3 if arch == 'rdna2' else 4)
+
+
+def test_gfx1150_bf16_inline_uses_upper_float_half():
+    from amdisa.codegen.execute.rj_arith_float import gen_float_dot32
+
+    body = gen_float_dot32(
+        context(
+            'rdna3_5',
+            'V_DOT2_F32_BF16',
+            ['d'],
+            ['a', 'b', 'c'],
+            enc_name='ENC_VOP3P',
+            opsel_exprs=('low', 'high'),
+        )
+    )
+    assert 'rj_arith_v_dot2_f32_bf16_w32,' in body
+    assert 'dot2_src_needs_half_replication(inst_.src0)' in body
+    assert 'is_inline_float_src' not in body
+    assert 'RJ_ARITH_DOT_ABS_C' in body and 'RJ_ARITH_DOT_NEG_C' in body
