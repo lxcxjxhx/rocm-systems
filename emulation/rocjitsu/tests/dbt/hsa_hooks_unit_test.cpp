@@ -506,6 +506,11 @@ hsa_status_t HSA_API fake_amd_memory_async_batch_copy(const hsa_amd_memory_copy_
       }
       continue;
     case HSA_AMD_MEMORY_COPY_OP_LINEAR_BROADCAST:
+#if defined(HSA_AMD_INTERFACE_VERSION_MAJOR) && defined(HSA_AMD_INTERFACE_VERSION_MINOR) &&        \
+    (HSA_AMD_INTERFACE_VERSION_MAJOR > 1 ||                                                        \
+     (HSA_AMD_INTERFACE_VERSION_MAJOR == 1 && HSA_AMD_INTERFACE_VERSION_MINOR >= 37))
+    case HSA_AMD_MEMORY_COPY_OP_RECT:
+#endif
       if (op.num_entries == 0 || op.dst_agent_list == nullptr)
         return HSA_STATUS_ERROR_INVALID_ARGUMENT;
       for (uint16_t entry_idx = 0; entry_idx < op.num_entries; ++entry_idx) {
@@ -1576,6 +1581,30 @@ TEST(HsaHooksUnitTest, BatchCopyMapsBroadcastScalarSourceAndDestinationList) {
   expect_batch_copy_forwarding(op, {kHostAgent.handle, kHostAgent.handle},
                                {kHostAgent.handle, kHostAgent.handle});
 }
+
+#if defined(HSA_AMD_INTERFACE_VERSION_MAJOR) && defined(HSA_AMD_INTERFACE_VERSION_MINOR) &&        \
+    (HSA_AMD_INTERFACE_VERSION_MAJOR > 1 ||                                                        \
+     (HSA_AMD_INTERFACE_VERSION_MAJOR == 1 && HSA_AMD_INTERFACE_VERSION_MINOR >= 37))
+TEST(HsaHooksUnitTest, BatchCopyMapsRectScalarSourceAndDestinationList) {
+  hsa_amd_memory_copy_rect_ptr_t src_rects[2]{};
+  hsa_amd_memory_copy_rect_ptr_t dst_rects[2]{};
+  hsa_dim3_t ranges[2]{{1, 1, 1}, {2, 2, 1}};
+  hsa_agent_t dst_agents[] = {kGuestAgent, kHostAgent};
+
+  hsa_amd_memory_copy_op_t op{};
+  op.type = HSA_AMD_MEMORY_COPY_OP_RECT;
+  op.num_entries = 2;
+  op.rect_src = src_rects;
+  op.src_agent = kGuestAgent;
+  op.dst_agent_list = dst_agents;
+  op.rect_dst = dst_rects;
+  op.range_list = ranges;
+
+  expect_batch_copy_forwarding(op, {kHostAgent.handle, kHostAgent.handle},
+                               {kHostAgent.handle, kHostAgent.handle});
+}
+
+#endif
 
 TEST(HsaHooksUnitTest, BatchCopyMapsMultiIndirectScalarSourceAndDestinationList) {
   int src0 = 0;
