@@ -44,11 +44,13 @@
 /// representation.
 
 #include "rocjitsu/code/analysis/waitcheck/target.h"
+#include "rocjitsu/isa/arch/amdgpu/shared/scalar_operand_selectors.h"
 #include "rocjitsu/isa/arch/amdgpu/shared/vgpr_msb.h"
 
 #include <array>
 #include <bitset>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -108,9 +110,13 @@ struct PendingEvent {
   // Joins clear this must fact when any incoming path lacks the event. It is
   // state information, not part of the static event identity.
   bool present_on_all_paths = true;
-  // If this GFX11 LDS result is pending, its issuing EXEC was nonempty.
-  // This proves a later FLAT must issue while that mask is unchanged.
+  // If this GFX11 LDS result or expert memory-source read is pending,
+  // its issuing EXEC was nonempty until the mask is overwritten.
   bool implies_active_exec = false;
+  bool crossed_exec_expansion = false;
+  // While this source is still live, a younger active same-FIFO source
+  // cannot have completed its primary operation before reading its operands.
+  uint8_t younger_source_primaries = 0;
   bool check_uses = true;
   bool check_defs = true;
   bool check_exec_defs = false;
@@ -125,9 +131,13 @@ struct PendingEvent {
   // event's canonical vector position. Matching events join by minimum. Use the
   // wait-threshold width for arithmetic; only dense per-kind summaries are packed.
   uint32_t min_younger = 0;
-  // For an XCNT source, guaranteed younger credits on its primary completion FIFO.
-  // Unlike the translation age, this excludes other primary counters and FLAT routes.
+  // For an XCNT or dedicated VM_VSRC store source, guaranteed younger primary FIFO credits.
+  // For FLAT, count only same-family credits guaranteed on both possible routes.
   uint8_t min_younger_primary = 0;
+  // For CDNA5 WMMA, an explicitly retired core VALU beyond this instruction
+  // window proves the matrix register access has finished across pipelines.
+  uint8_t wmma_wait_states = 0;
+  uint8_t min_younger_core = 0;
 
   bool operator==(const PendingEvent &) const = default;
 };
@@ -141,7 +151,7 @@ struct SgprHazardProducer {
   uint64_t file_offset = 0;
   std::string instruction;
 
-  bool operator==(const SgprHazardProducer &) const = default;
+  auto operator<=>(const SgprHazardProducer &) const = default;
 };
 
 constexpr uint8_t kSgprHazardSalu = 1u << 0u;
@@ -168,21 +178,35 @@ struct SgprHazardState {
   bool operator==(const SgprHazardState &) const = default;
 };
 
-/// One destination hazard tracked by VA_VDST age, with a diagnostic witness.
-/// age is guaranteed progress; trans_since records a possible intervening
-/// transcendental operation, which makes a nonzero wait insufficient.
+/// A possible VA_VDST producer, ordered by least VALU progress then stable location.
 struct VaVdstHazard {
   uint8_t age = 0;
-  bool trans_since = false;
   SgprHazardProducer producer;
 
-  bool operator==(const VaVdstHazard &) const = default;
+  auto operator<=>(const VaVdstHazard &) const = default;
 };
 
-/// Sparse per-VGPR VA_VDST hazards. Absence means no tracked hazard for that lane;
-/// joins retain hazards from either path and the least guaranteed progress.
+// RDNA3 TRANS results can feed a VALU for five intervening VALUs and one
+// intervening TRANS. Separate the two TRANS counts at CFG joins so ages
+// from different paths cannot manufacture a qualifying pair of distances.
+struct TransUseHazard {
+  uint8_t valu_age = 0;
+  SgprHazardProducer producer;
+
+  bool operator==(const TransUseHazard &) const = default;
+};
+// Keyed by the physical 16-bit VGPR half and intervening TRANS count.
+using TransUseHazards = std::map<std::pair<uint16_t, uint8_t>, TransUseHazard>;
+
+/// Both paths expire at age 15. A path containing a TRANS needs a zero wait
+/// until then. Keep its age and witness separate from an ordinary path.
 struct VaVdstHazardState {
-  std::unordered_map<uint16_t, VaVdstHazard> hazards;
+  using Key = std::pair<uint16_t, bool>; // VGPR and whether a TRANS has issued.
+  std::map<Key, VaVdstHazard> hazards;
+
+  void merge_hazard(Key key, const VaVdstHazard &hazard);
+  [[nodiscard]] std::pair<const VaVdstHazard *, uint32_t> requirement(uint16_t reg) const;
+  [[nodiscard]] bool contains_producer(uint16_t reg, const SgprHazardProducer &producer) const;
 
   bool operator==(const VaVdstHazardState &) const = default;
 };
@@ -228,7 +252,7 @@ struct ExpertSchedulingState {
 /// Possible values of a scalar source for MOVREL. An empty set means unknown.
 /// Once a join exceeds the bound, retain every possible register alias.
 struct ScalarOffsetValues {
-  std::array<uint32_t, 4> literals{};
+  std::array<uint32_t, 16> literals{};
   unsigned count = 0;
 
   [[nodiscard]] std::span<const uint32_t> values() const { return {literals.data(), count}; }
@@ -256,16 +280,25 @@ struct PendingState {
   std::array<bool, kCounterCount> uncertain_order{};
   SgprHazardState sgpr_hazards;
   VaVdstHazardState va_vdst_hazards;
+  TransUseHazards trans_use_hazards;
   VgprMsbState vgpr_msb;
   ScalarOffsetValues m0;
   std::unordered_map<uint16_t, ScalarOffsetValues> sgpr_offsets;
   std::optional<bool> prefetch_enabled;
+  std::optional<bool> vector_skip = false;
+  bool expert_exec_empty = false; ///< All lanes are known inactive for expert memory sources.
+  // A live vector operand implies the producer had an active lane. The same
+  // EXEC remains active until an intervening write can disable every lane.
+  bool expert_valu_may_skip = false;
+  bool expert_exec_nonzero = false;
+  std::bitset<amdgpu::kVccSelectorLast + 1> expert_saved_nonzero_exec;
   bool exec_nonzero = false; ///< All incoming paths have at least one active lane.
   bool vgpr_msb_setreg_hazard = false;
   bool previous_vm_vsrc_zero_wait = false;
   std::optional<SgprHazardProducer> async_barrier_post_wait;
   std::vector<PendingDelayAlu> delay_alu;
   ExpertSchedulingState expert_scheduling;
+  ExpertValuDelayState expert_delay;
 
   bool operator==(const PendingState &) const = default;
 };
@@ -279,8 +312,29 @@ static_assert(sizeof(PendingState) < 4096,
 /// states without emitting diagnostics. Architecture-aware transfers report
 /// unsupported targets through Result/FailureOr.
 struct WaitcheckStateOps : WaitcheckTarget {
+  static bool tracks_d16_subregisters(rj_code_arch_t arch, uint32_t flags = 0, uint8_t hsa_abi = 0);
+  static std::optional<PartialRegisterAccess> partial_d16_load_def(const Instruction &inst,
+                                                                   bool tracks_halves);
+  static void update_expert_valu_mask(PendingState &state, const Instruction &inst,
+                                      const RegisterSet &defs, uint32_t wave_size,
+                                      uint32_t allocated_sgprs, bool writes_exec);
+  [[nodiscard]] static std::optional<bool> constant_exec_nonzero(const Instruction &inst,
+                                                                 uint32_t wave_size);
+  [[nodiscard]] static std::optional<uint32_t>
+  track_issue_units(PendingState &state, const Instruction &inst, const ClassifiedEvent &event,
+                    const RegisterSet &defs, rj_code_arch_t arch);
+  [[nodiscard]] static bool preserves_exec_lanes(const Instruction &inst);
+  [[nodiscard]] static bool vm_source_results_allocated(const Instruction &inst,
+                                                        rj_code_arch_t arch,
+                                                        const VgprMsbState &banks,
+                                                        uint32_t min_vgprs);
+  [[nodiscard]] static bool dedicated_source_issues(const Instruction &inst);
+  [[nodiscard]] static uint8_t dedicated_source_primary(WaitEventKind kind);
+  [[nodiscard]] static bool pending_source_forces_issue(WaitEventKind older, WaitEventKind younger,
+                                                        bool empty_exec);
   static void age_events(PendingState &state, const PendingEvent &event, rj_code_arch_t arch,
-                         uint32_t maximum_wait, uint32_t units = 1);
+                         uint32_t maximum_wait, uint32_t units = 1,
+                         bool expanded_source_issues = false, bool results_allocated = true);
 
   [[nodiscard]] static bool is_completion_counter(WaitCounterKind counter);
   [[nodiscard]] static std::optional<uint32_t> guaranteed_issue_order(WaitCounterKind counter,
@@ -301,6 +355,8 @@ struct WaitcheckStateOps : WaitcheckTarget {
 
   static void merge_va_vdst_hazards(VaVdstHazardState &dst, const VaVdstHazardState &src);
 
+  static void apply_expert_valu_delay(PendingState &state, const Instruction &inst,
+                                      rj_code_arch_t arch, bool may_skip);
   static void merge_delay_alu(std::vector<PendingDelayAlu> &dst,
                               const std::vector<PendingDelayAlu> &src);
 
@@ -329,6 +385,7 @@ struct WaitcheckStateOps : WaitcheckTarget {
 
   static void apply_xcnt_wait(PendingState &state, uint32_t count);
   static void apply_xcnt_group_wait(PendingState &state, uint32_t count);
+  static void apply_xcnt_smem_group_wait(PendingState &state);
 
   // Includes counter-only requests as well as materialized register hazards.
   [[nodiscard]] static bool has_xcnt_smem(const PendingState &state);
@@ -404,6 +461,9 @@ private:
 
   template <typename Predicate>
   [[nodiscard]] static bool has_xcnt_event(const PendingState &state, Predicate predicate);
+
+  template <typename Predicate>
+  static void retire_completed_xcnt(PendingState &state, Predicate completed);
 
   template <typename Predicate>
   static void retire_xcnt_group(PendingState &state, Predicate belongs_to_group,
