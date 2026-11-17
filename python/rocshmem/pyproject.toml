@@ -19,8 +19,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rocshmem4py"
 # Version is computed in setup.py: the base release plus a PEP 440 local
-# segment recording the linked rocSHMEM version, e.g. "0.1.0+rocshmem3.6.0".
-dynamic = ["version"]
+# segment recording the linked rocSHMEM version, e.g. "0.1.0+rocshmem3.6.0",
+# unless a distributor replaces the suffix (ROCSHMEM4PY_VERSION_SUFFIX).
+# Dependencies are dynamic so distributors can inject runtime requirements
+# (ROCSHMEM4PY_EXTRA_INSTALL_REQUIREMENTS); see setup.py.
+dynamic = ["version", "dependencies"]
 description = "Python bindings for ROCm OpenSHMEM (rocSHMEM) runtime library"
 readme = "README.md"
 requires-python = ">=3.8"

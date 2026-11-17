@@ -91,6 +91,31 @@ export LD_LIBRARY_PATH=$CMAKE_PREFIX_PATH/lib:$ROCM_PATH/lib:$LD_LIBRARY_PATH
 
 > Note: this package is not published to PyPI yet; install from source only.
 
+### Distributor build inputs
+
+Packagers that ship the wheel alongside a ROCm runtime package (e.g. TheRock)
+can stamp their build identity at `pip wheel` time instead of post-processing
+the wheel. All are optional; unset, the build behaves as described above.
+
+| Variable | Effect | Example |
+| --- | --- | --- |
+| `ROCSHMEM4PY_VERSION_SUFFIX` | `+` followed by a PEP 440 local version label. Replaces the default `+rocshmem<ver>` suffix; the public version is unchanged. | `+rocm7.10.0` gives `0.1.0+rocm7.10.0` |
+| `ROCSHMEM4PY_EXTRA_INSTALL_REQUIREMENTS` | Added to `Requires-Dist`. `\|`-separated PEP 508 requirements. | `rocm-sdk-core==7.10.0` |
+| `ROCSHMEM4PY_INSTALL_RPATH` | Colon-separated `DT_RPATH` for `_rocshmem4py`, replacing the absolute build RPATH. | `$ORIGIN/_rocm_sdk_core/lib:$ORIGIN/_rocm_sdk_core/lib/rocm_sysdeps/lib:$ORIGIN/_rocm_sdk_core/lib/llvm/lib` |
+
+The linked rocSHMEM version stays available as `rocshmem4py.__rocshmem_version__`.
+
+`build_tests/` checks these inputs without a GPU. The metadata tests need only
+`setuptools`; the wheel-build tests also need `nanobind`, `cmake`, `readelf`,
+the ROCm toolchain, and a rocSHMEM install found the same way as for the build,
+and are skipped otherwise. The rocSHMEM CI driver
+(`projects/rocshmem/scripts/python_tests/driver.sh`) runs them as its `build`
+test type and as part of `all`:
+
+```bash
+CMAKE_PREFIX_PATH=/opt/rocshmem python -m pytest build_tests -v
+```
+
 ### Building against different rocSHMEM backend configurations
 
 The binding statically links `librocshmem.a`, so its build and runtime

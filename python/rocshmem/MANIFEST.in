@@ -6,6 +6,7 @@ include CMakeLists.txt
 recursive-include src *.cc *.h *.hpp
 recursive-include rocshmem4py *.py
 recursive-include tests *.py
+recursive-include build_tests *.py
 
 global-exclude __pycache__
 global-exclude *.py[co]
