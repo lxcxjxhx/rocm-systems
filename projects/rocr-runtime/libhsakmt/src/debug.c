@@ -711,6 +711,7 @@ static HSAKMT_STATUS hsaKmtGetCoreDeviceInfoCtx(HsaKFDContext *ctx,
 	device_info->array_count = (props.NumArrays * props.NumShaderBanks) / props.NumXcc;
 	device_info->simd_arrays_per_engine = props.NumArrays;
 	device_info->num_xcc = props.NumXcc;
+	device_info->num_aid = props.NumAid;
 
 	/* Capabilities */
 	device_info->capability = props.Capability.Value;

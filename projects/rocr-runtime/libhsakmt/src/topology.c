@@ -1261,6 +1261,8 @@ static HSAKMT_STATUS topology_sysfs_get_node_props(HsaKFDContext *ctx,
 			props->CtlStackSize = prop_val;
 		else if (strcmp(prop_name, "num_xcc") == 0)
 			props->NumXcc = prop_val;
+		else if (strcmp(prop_name, "num_aid") == 0)
+			props->NumAid = prop_val;
 		else if (strcmp(prop_name, "family_id") == 0)
 			props->FamilyID = prop_val;
 		else if (strcmp(prop_name, "gfx_target_version") == 0)
@@ -1375,6 +1377,12 @@ static HSAKMT_STATUS topology_sysfs_get_node_props(HsaKFDContext *ctx,
 	 */
 	if (!props->NumXcc)
 		props->NumXcc = 1;
+
+	/* On older kernels, num_aid may not be present in system properties.
+	 * Set it to 1 if system properties do not report num_aid.
+	 */
+	if (!props->NumAid)
+		props->NumAid = 1;
 
 out:
 	free(read_buf);

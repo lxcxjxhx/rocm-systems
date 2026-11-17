@@ -150,6 +150,7 @@ struct kfd_dbg_device_info_entry {
 	__u32 array_count;
 	__u32 simd_arrays_per_engine;
 	__u32 num_xcc;
+	__u32 num_aid;
 	__u32 capability;
 	__u32 debug_prop;
 };
