@@ -8,6 +8,7 @@
 #include "rocjitsu/isa/arch/amdgpu/generated/cdna2/vop2.h"
 #include "rocjitsu/isa/arch/amdgpu/generated/shared/execute_shared.h"
 #include "rocjitsu/isa/arch/amdgpu/shared/dpp_sdwa_ops.h"
+#include "rocjitsu/isa/arch/amdgpu/shared/rj_arith_float_exec.h"
 #include "rocjitsu/isa/arch/amdgpu/shared/simd_glue.h"
 #include "rocjitsu/isa/arch/amdgpu/shared/transcendental.h"
 #include "rocjitsu/vm/amdgpu/wavefront.h"
@@ -826,7 +827,7 @@ void VMacF32Vop2::execute_impl(amdgpu::Wavefront &wf) {
     execute_modifier_impl(wf);
     return;
   }
-  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::Accumulate, false>(*this, wf);
+  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::Accumulate>(*this, wf);
 }
 
 RJ_NOINLINE void VMacF32Vop2::execute_modifier_impl(amdgpu::Wavefront &wf) {
@@ -846,16 +847,16 @@ RJ_NOINLINE void VMacF32Vop2::execute_modifier_impl(amdgpu::Wavefront &wf) {
   if (inst_.src0 == amdgpu::SRC_DPP)
     dpp_write_mask_scope_.bind(wf,
                                wf.exec() & dpp_plan_.row_bank_mask & dpp_plan_.source_write_mask);
-  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::Accumulate, false>(*this, wf);
+  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::Accumulate>(*this, wf);
   dpp_write_mask_scope_.restore();
 }
 
 void VMadmkF32Vop2::execute_impl(amdgpu::Wavefront &wf) {
-  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::MultiplyLiteral, false>(*this, wf);
+  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::MultiplyLiteral>(*this, wf);
 }
 
 void VMadakF32Vop2::execute_impl(amdgpu::Wavefront &wf) {
-  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::AddLiteral, false>(*this, wf);
+  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::AddLiteral>(*this, wf);
 }
 
 void VAddCoU32Vop2::execute_impl(amdgpu::Wavefront &wf) {
@@ -1309,7 +1310,9 @@ void VMacF16Vop2::execute_impl(amdgpu::Wavefront &wf) {
     execute_modifier_impl(wf);
     return;
   }
-  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::Accumulate, true>(*this, wf);
+  amdgpu::arith::execute_float_ternary16(wf, rj_arith_v_mad_f16_w32_gfx90a,
+                                         rj_arith_v_mad_f16_w64_gfx90a, wf.cu().arithmetic_flags(),
+                                         0, vdst, src0, vsrc1, vdst, true, true);
 }
 
 RJ_NOINLINE void VMacF16Vop2::execute_modifier_impl(amdgpu::Wavefront &wf) {
@@ -1329,16 +1332,22 @@ RJ_NOINLINE void VMacF16Vop2::execute_modifier_impl(amdgpu::Wavefront &wf) {
   if (inst_.src0 == amdgpu::SRC_DPP)
     dpp_write_mask_scope_.bind(wf,
                                wf.exec() & dpp_plan_.row_bank_mask & dpp_plan_.source_write_mask);
-  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::Accumulate, true>(*this, wf);
+  amdgpu::arith::execute_float_ternary16(wf, rj_arith_v_mad_f16_w32_gfx90a,
+                                         rj_arith_v_mad_f16_w64_gfx90a, wf.cu().arithmetic_flags(),
+                                         0, vdst, src0, vsrc1, vdst, true, true);
   dpp_write_mask_scope_.restore();
 }
 
 void VMadmkF16Vop2::execute_impl(amdgpu::Wavefront &wf) {
-  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::MultiplyLiteral, true>(*this, wf);
+  amdgpu::arith::execute_float_ternary16(wf, rj_arith_v_mad_f16_w32_gfx90a,
+                                         rj_arith_v_mad_f16_w64_gfx90a, wf.cu().arithmetic_flags(),
+                                         0, vdst, src0, simm32, vsrc1, true, true);
 }
 
 void VMadakF16Vop2::execute_impl(amdgpu::Wavefront &wf) {
-  amdgpu::execute_cdna2_mad_vop2<amdgpu::MadVop2::AddLiteral, true>(*this, wf);
+  amdgpu::arith::execute_float_ternary16(wf, rj_arith_v_mad_f16_w32_gfx90a,
+                                         rj_arith_v_mad_f16_w64_gfx90a, wf.cu().arithmetic_flags(),
+                                         0, vdst, src0, vsrc1, simm32, true, true);
 }
 
 void VAddU16Vop2::execute_impl(amdgpu::Wavefront &wf) {

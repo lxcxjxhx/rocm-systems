@@ -1204,6 +1204,7 @@ std::vector<ArithmeticCase> f16_fma_nan_cases() {
   return cases;
 }
 
+// Native FMA uses the default-host contract; guest MODE still varies below.
 std::vector<ArithmeticCase> f16_fma_omod_cases() {
   std::vector<ArithmeticCase> cases;
   for (rj_code_arch_t arch : {ROCJITSU_CODE_ARCH_RDNA3, ROCJITSU_CODE_ARCH_RDNA3_5,
@@ -1225,7 +1226,7 @@ std::vector<ArithmeticCase> f16_fma_omod_cases() {
                    {{0, a}, {1, b}, {2, c}, {6, 0u}},
                    {{6, expected}},
                    (uint32_t(ieee) << 9) | (uint32_t(overflow) << 23) | (denorm << 6),
-                   uses_default_host_controls(arch) ? FE_TONEAREST : FE_UPWARD});
+                   FE_TONEAREST});
             };
             // Both physical cards round the arithmetic before applying OMOD.
             add("NegativeUnderflow", 0x0400u, 0xbc00u, 0u, 3,
@@ -1260,7 +1261,7 @@ std::vector<ArithmeticCase> f16_fma_omod_cases() {
                {{0, a}, {1, b}, {2, c}, {6, c}},
                {{6, expected}},
                0x40u | (round << 2),
-               uses_default_host_controls(arch) ? FE_TONEAREST : FE_TOWARDZERO});
+               FE_TONEAREST});
         };
         // RNE retains a negative normal until div:2 makes it tiny; RTZ first
         // flushes the arithmetic result, so the modifier receives a signed zero.
@@ -1276,30 +1277,31 @@ std::vector<ArithmeticCase> host_mxcsr_cases() {
   constexpr uint32_t kDazMask = 1u << 6;
   constexpr uint32_t kFtzMask = 1u << 15;
   constexpr uint32_t kControlMask = _MM_ROUND_MASK | kDazMask | kFtzMask;
+  // Native FMA uses rj-arith and assumes default host controls. Keep host
+  // isolation tests for the still-legacy packed model; native exceptional
+  // values remain covered by F16FmaNan under default host controls.
   for (rj_code_arch_t arch : {ROCJITSU_CODE_ARCH_RDNA3_5, ROCJITSU_CODE_ARCH_CDNA5})
-    for (bool packed : {false, true})
-      for (bool trap_invalid : {false, true}) {
-        const auto pair = [packed](uint32_t value) { return packed ? value * 0x10001u : value; };
-        const auto add = [&](const char *name, uint16_t a, uint16_t b, uint16_t c,
-                             uint16_t expected) {
-          cases.push_back(
-              {"F16FmaArch" + std::to_string(arch) + "Packed" + std::to_string(packed) + "Trap" +
-                   std::to_string(trap_invalid) + name,
-               arch,
-               {packed ? 0xcc0e4006u : 0xd6480006u, packed ? 0x1c0a0300u : 0x040a0300u, 0u},
-               {{0, pair(a)}, {1, pair(b)}, {2, pair(c)}},
-               {{6, packed ? pair(expected) : 0xdead0000u | expected}},
-               0xf0u,
-               FE_UPWARD,
-               0xffffu,
-               trap_invalid ? 0x1f00u : 0x1f80u});
-        };
-        // The residual must not expose Inf-Inf to the caller's exception state.
-        add("InfiniteProduct", 0x7c00u, 0x3c00u, 0u, 0x7c00u);
-        add("InfiniteAddend", 0x3c00u, 0x3c00u, 0x7c00u, 0x7c00u);
-        add("InvalidProduct", 0u, 0x7c00u, 0x3c00u, 0xfe00u);
-        add("InvalidSum", 0x7c00u, 0x3c00u, 0xfc00u, 0xfe00u);
-      }
+    for (bool trap_invalid : {false, true}) {
+      const auto pair = [](uint32_t value) { return value * 0x10001u; };
+      const auto add = [&](const char *name, uint16_t a, uint16_t b, uint16_t c,
+                           uint16_t expected) {
+        cases.push_back({"PackedF16FmaArch" + std::to_string(arch) + "Trap" +
+                             std::to_string(trap_invalid) + name,
+                         arch,
+                         {0xcc0e4006u, 0x1c0a0300u, 0u},
+                         {{0, pair(a)}, {1, pair(b)}, {2, pair(c)}},
+                         {{6, pair(expected)}},
+                         0xf0u,
+                         FE_UPWARD,
+                         0xffffu,
+                         trap_invalid ? 0x1f00u : 0x1f80u});
+      };
+      // The residual must not expose Inf-Inf to the caller's exception state.
+      add("InfiniteProduct", 0x7c00u, 0x3c00u, 0u, 0x7c00u);
+      add("InfiniteAddend", 0x3c00u, 0x3c00u, 0x7c00u, 0x7c00u);
+      add("InvalidProduct", 0u, 0x7c00u, 0x3c00u, 0xfe00u);
+      add("InvalidSum", 0x7c00u, 0x3c00u, 0xfc00u, 0xfe00u);
+    }
   // Change MXCSR rounding independently of the x87 rounding reported by fegetround().
   for (uint32_t rounding : {_MM_ROUND_UP, _MM_ROUND_DOWN, _MM_ROUND_TOWARD_ZERO}) {
     const bool upward = rounding == _MM_ROUND_UP;
