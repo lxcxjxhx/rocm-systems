@@ -572,7 +572,7 @@ TEST_F(AmdsmiWrapMicrotest, Shutdown_LibraryFailureIsReturned) {
 // dlopen runs once per process (function-local static handle), so these two run in forked children.
 // The child bodies are plain functions: their lambdas' commas would split EXPECT_EXIT's arguments.
 namespace {
-int DlopenFailureChild() {
+int DlopenFailureFallsBackToArsmiChild() {
   ClearSmiTable();
   g_params["RCCL_USE_AMD_SMI_LIB"] = 1;
   static std::string opened;
@@ -581,11 +581,14 @@ int DlopenFailureChild() {
     return nullptr;
   };
   ncclResult_t r = amd_smi_init();
-  bool warned = false;
+  bool warnedFallback = false;
+  bool infoArsmi = false;
   for (const auto& m : g_logged) {
-    warned |= m.level == NCCL_LOG_WARN && m.text.find("Failed to open") != std::string::npos;
+    warnedFallback |= m.level == NCCL_LOG_WARN && m.text.find("falling back to sysfs") != std::string::npos;
+    infoArsmi |= m.level == NCCL_LOG_INFO && m.text.find("alternative rsmi") != std::string::npos;
   }
-  return r == ncclInternalError && opened.rfind("libamd_smi.so", 0) == 0 && warned ? 0 : 1;
+  // Should succeed via ARSMI fallback, not fail
+  return r == ncclSuccess && opened.rfind("libamd_smi.so", 0) == 0 && warnedFallback && infoArsmi ? 0 : 1;
 }
 
 int DlopenResolvesChild() {
@@ -606,8 +609,9 @@ int DlopenResolvesChild() {
 }
 }  // namespace
 
-TEST_F(AmdsmiWrapMicrotest, Init_DlopenFailureIsInternalError) {
-  EXPECT_EXIT(std::exit(DlopenFailureChild()), ::testing::ExitedWithCode(0), "");
+// When dlopen fails, init falls back to ARSMI instead of returning an error.
+TEST_F(AmdsmiWrapMicrotest, Init_DlopenFailureFallsBackToArsmi) {
+  EXPECT_EXIT(std::exit(DlopenFailureFallsBackToArsmiChild()), ::testing::ExitedWithCode(0), "");
 }
 
 TEST_F(AmdsmiWrapMicrotest, Init_DlopenResolvesEveryEntryPointByName) {
@@ -683,14 +687,14 @@ TEST_F(AmdsmiWrapMicrotest, NumDevice_Wsl2AsksHip) {
   EXPECT_EQ(n, 3u);
 }
 
-// Counts every processor handle in every socket, CPUs included; a fix flips this pin.
-TEST_F(AmdsmiWrapMicrotest, NumDevice_KnownBug_LibCountsCpuProcessors) {
+// Counts only GPU processor handles, skipping CPUs and other processor types.
+TEST_F(AmdsmiWrapMicrotest, NumDevice_LibCountsOnlyGpuProcessors) {
   InitFor(/*lib=*/true);
   g_smi.sockets = {{FakeProc{}, FakeProc{}}, {FakeProc{}}};
-  g_smi.sockets[1][0].gpu = false;
+  g_smi.sockets[1][0].gpu = false;  // CPU processor, should be skipped
   uint32_t n = 0;
   EXPECT_EQ(amd_smi_getNumDevice(&n), ncclSuccess);
-  EXPECT_EQ(n, 3u);
+  EXPECT_EQ(n, 2u);  // Only the 2 GPUs, not the CPU
 }
 
 TEST_F(AmdsmiWrapMicrotest, NumDevice_LibFailureIsInternalError) {
@@ -1050,6 +1054,22 @@ TEST_F(AmdsmiWrapMicrotest, FirmwareVersion_LibFailures) {
   EXPECT_TRUE(Logged(NCCL_LOG_ERROR, "amdsmi_get_fw_info symbol not loaded"));
 }
 
+// Verifies that amd_smi_getFirmwareVersion initializes the backend before checking
+// amdSmiLibInitialized, so calling it before explicit amd_smi_init() still works.
+TEST_F(AmdsmiWrapMicrotest, FirmwareVersion_SelfInitializesBeforeBackendCheck) {
+  // Don't call InitFor() - start with no init, like init.cc's early firmware query
+  g_params["USE_AMD_SMI_LIB"] = 1;
+  WireUpDlopen();
+  TwoGpusBehindACpu();
+  g_smi.sockets[0][1].fwVersion = 0x42;
+
+  // The function should call amd_smi_init() internally before checking amdSmiLibInitialized
+  uint64_t fw = 0;
+  EXPECT_EQ(amd_smi_getFirmwareVersion(0, &fw), ncclSuccess);
+  EXPECT_EQ(fw, 0x42u);
+  EXPECT_EQ(g_smi.initCalls, 1);  // Confirms init was called internally
+}
+
 // amd_smi_ensureFabricInitialized and the fabric accessors
 
 namespace {
@@ -1235,6 +1255,37 @@ TEST_F(AmdsmiWrapMicrotest, Fabric_LibWithoutAProbeHandleFallsBackToSysfs) {
   ASSERT_EQ(amd_smi_ensureFabricInitialized(), ncclSuccess);
   EXPECT_TRUE(Logged(NCCL_LOG_WARN, "no processor handle to probe"));
   EXPECT_EQ(amdsmiFabricDevices[0].acceleratorId, 44u);
+}
+
+// When AMD SMI lib initializes but ABI probe fails, fabric init falls back to sysfs.
+// This test verifies that the device count and indices remain consistent: numDevs from
+// amd_smi_getNumDevice (which uses AMD SMI when lib is initialized) matches the count
+// ARSMI would report, and each device index 0..N-1 is populated correctly from ARSMI.
+// This addresses the ARGUS concern about "useSysfs mixed state" at line 600.
+TEST_F(AmdsmiWrapMicrotest, Fabric_LibProbeFailsMultiDeviceIndicesConsistent) {
+  UseLib();
+  // 4 GPUs across 2 sockets - AMD SMI will count them by hip_id
+  FakeProc g0, g1, g2, g3;
+  g0.hipId = 0; g1.hipId = 1; g2.hipId = 2; g3.hipId = 3;
+  g_smi.sockets = {{g0, g1}, {g2, g3}};
+  // Force probe failure so we fall back to sysfs
+  g_smi.fabricProbeStatus = AMDSMI_STATUS_NOT_SUPPORTED;
+  // ARSMI reports same 4 devices with distinct accelerator IDs
+  g_arsmi.numDevices = 4;
+  g_arsmi.fabric[0] = ArsmiFabric(1, 100, 400000);
+  g_arsmi.fabric[1] = ArsmiFabric(1, 101, 400000);
+  g_arsmi.fabric[2] = ArsmiFabric(1, 102, 400000);
+  g_arsmi.fabric[3] = ArsmiFabric(1, 103, 400000);
+
+  ASSERT_EQ(amd_smi_ensureFabricInitialized(), ncclSuccess);
+  EXPECT_TRUE(Logged(NCCL_LOG_WARN, "falling back to sysfs"));
+
+  // Verify all 4 devices populated from ARSMI with correct indices
+  EXPECT_EQ(amdsmiFabricDeviceCount, 4);
+  EXPECT_EQ(amdsmiFabricDevices[0].acceleratorId, 100u);
+  EXPECT_EQ(amdsmiFabricDevices[1].acceleratorId, 101u);
+  EXPECT_EQ(amdsmiFabricDevices[2].acceleratorId, 102u);
+  EXPECT_EQ(amdsmiFabricDevices[3].acceleratorId, 103u);
 }
 
 // Without the fabric entry point the probe is skipped and each device is marked unsupported.

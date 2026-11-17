@@ -59,7 +59,7 @@ static int is_wsl2 = -1;
   } while (0)
 
 RCCL_PARAM(UseAmdSmiLib, "USE_AMD_SMI_LIB",
-           0); // Opt-in environment variable for enabling using amd_smi_lib instead of internal code
+           1); // Enabled by default; set RCCL_USE_AMD_SMI_LIB=0 to use sysfs fallback instead
 
 RCCL_PARAM(FabricTelemetryEnable, "FABRIC_TELEMETRY_ENABLE", 0); // Opt-in: sample and log fabric telemetry
 RCCL_PARAM(FabricTelemetryIntervalMs, "FABRIC_TELEMETRY_INTERVAL_MS", 1000); // Sampling period in milliseconds
@@ -146,7 +146,7 @@ std::mutex amdSmiInitLock;
 ncclResult_t amdSmiInitResult = ncclSuccess;
 bool amdSmiInitCalled = false;
 // amdsmi_init ran, from either the RCCL_USE_AMD_SMI_LIB path or the RAS diagnostics.
-bool amdSmiLibInitialized = false;
+std::atomic<bool> amdSmiLibInitialized{false};
 amdsmi_status_t (*amdSmiLibShutDown)() = nullptr;
 bool amdSmiDiagLoadCalled = false;
 
@@ -162,7 +162,7 @@ using AmdSmiTelemIdToStringLegacyFn = const char* (*)(uint64_t);
  * Helper: Get processor handle for a device index
  ************************************************************************/
 static ncclResult_t getProcessorHandle(uint32_t deviceIndex, amdsmi_processor_handle* procHandle) {
-  if (!rcclParamUseAmdSmiLib()) {
+  if (!amdSmiLibInitialized) {
     return ncclSystemError; // processor handles are amd_smi_lib-only
   }
 
@@ -215,8 +215,8 @@ static ncclResult_t amd_smi_init_impl() {
       // the amdsmi headers, otherwise the unversioned name (see above).
       static void* libhandle = dlopen(RCCL_AMDSMI_LIBNAME, RTLD_NOW);
       if (libhandle == nullptr) {
-        WARN("Failed to open %s: %s", RCCL_AMDSMI_LIBNAME, dlerror());
-        return ncclInternalError;
+        WARN("Failed to open %s: %s; falling back to sysfs-based fabric discovery", RCCL_AMDSMI_LIBNAME, dlerror());
+        goto fallback_to_arsmi;
       }
 
       struct Symbol {
@@ -266,13 +266,10 @@ static ncclResult_t amd_smi_init_impl() {
     // Retained because the telemetry name call convention depends on it
     amdSmiLibMajor.store(version.major, std::memory_order_release);
   } else {
-    // initialize alternate rsmi
+fallback_to_arsmi:
+    // Reached when RCCL_USE_AMD_SMI_LIB=0 OR dlopen failed; use sysfs for fabric discovery
     ARSMICHECK(ARSMI_init());
-    // RCCL_USE_AMD_SMI_LIB only selects who performs fabric *discovery*: amd_smi_lib, or the
-    // ualink sysfs nodes via ARSMI_get_fabric_info(). Both populate amdsmiFabricDevices
-    // identically, so UALoE/UALLink works on this path.
-    INFO(NCCL_INIT, "initialized internal alternative rsmi functionality; UALoE/UALLink fabric discovery uses sysfs "
-                    "(set RCCL_USE_AMD_SMI_LIB=1 to use amd_smi_lib instead)");
+    INFO(NCCL_INIT, "initialized internal alternative rsmi functionality; UALoE/UALLink fabric discovery uses sysfs");
   }
   return ncclSuccess;
 }
@@ -314,7 +311,7 @@ ncclResult_t amd_smi_shutdown() {
 ncclResult_t amd_smi_getNumDevice(uint32_t* num_devs) {
   if (__atomic_load_n(&is_wsl2, __ATOMIC_ACQUIRE)) CUDACHECK(cudaGetDeviceCount((int*)num_devs));
   else {
-    if (rcclParamUseAmdSmiLib()) {
+    if (amdSmiLibInitialized) {
       // rsmi_num_monitor_devices is deprecated
 
       // with amd-smi, first get list of socket handles,
@@ -327,11 +324,17 @@ ncclResult_t amd_smi_getNumDevice(uint32_t* num_devs) {
 
       uint32_t total_gpus = 0;
       for (auto& socket : sockets) {
-        uint32_t num_gpus_per_socket = 0;
-        AMDSMITRY(amdsmi_get_processor_handles, socket, &num_gpus_per_socket, nullptr);
-        std::vector<amdsmi_processor_handle> processor_handles(num_gpus_per_socket);
-        AMDSMITRY(amdsmi_get_processor_handles, socket, &num_gpus_per_socket, processor_handles.data());
-        total_gpus += num_gpus_per_socket;
+        uint32_t processor_count = 0;
+        AMDSMITRY(amdsmi_get_processor_handles, socket, &processor_count, nullptr);
+        std::vector<amdsmi_processor_handle> processor_handles(processor_count);
+        AMDSMITRY(amdsmi_get_processor_handles, socket, &processor_count, processor_handles.data());
+        for (auto& proc : processor_handles) {
+          processor_type_t type;
+          AMDSMITRY(amdsmi_get_processor_type, proc, &type);
+          if (type == AMDSMI_PROCESSOR_TYPE_AMD_GPU) {
+            total_gpus++;
+          }
+        }
       }
       *num_devs = total_gpus;
     } else {
@@ -346,15 +349,16 @@ ncclResult_t amd_smi_getDevicePciBusIdString(uint32_t deviceIndex, char* busId, 
   if (__atomic_load_n(&is_wsl2, __ATOMIC_ACQUIRE)) {
     CUDACHECK(cudaDeviceGetPCIBusId(busId, len, deviceIndex));
   } else {
-    /** amd-smi's bus ID format
+    /** amd-smi's bus ID format (same as ARSMI)
      *  | Name        | Field   |
      *  ------------- | ------- |
-     *  | Domain      | [63:16] |
+     *  | Domain      | [63:32] |
+     *  | Reserved    | [31:16] |
      *  | Bus         | [15: 8] |
      *  | Device      | [ 7: 3] |
      *  | Function    | [ 2: 0] |
      **/
-    if (rcclParamUseAmdSmiLib()) {
+    if (amdSmiLibInitialized) {
       // rsmi_dev_pci_id_get is deprecated
 
       /// with amd-smi, first get list of socket handles,
@@ -426,7 +430,7 @@ ncclResult_t amd_smi_getDeviceIndexByPciBusId(const char* pciBusId, uint32_t* de
 
     // with amd-smi, we can use amdsmi_get_processor_handle_from_bdf,
     // and then query the enumeration info for that processor_handle
-    if (rcclParamUseAmdSmiLib()) {
+    if (amdSmiLibInitialized) {
       amdsmi_processor_handle processor_handle = 0;
 
       amdsmi_bdf_t bdf = {};
@@ -493,7 +497,7 @@ ncclResult_t amd_smi_getLinkInfo(int srcIndex, int dstIndex, amdsmi_link_type_t*
     // then get number of processor handles in said sockets,
     // then get the prcoessor handle matching the src and dst index,
     // and then use these processor handles for amdsmi hardware topology functions
-    if (rcclParamUseAmdSmiLib()) {
+    if (amdSmiLibInitialized) {
       uint32_t socket_count = 0;
       amdsmi_processor_handle src_processor_handle = 0;
       amdsmi_processor_handle dst_processor_handle = 0;
@@ -530,8 +534,14 @@ ncclResult_t amd_smi_getLinkInfo(int srcIndex, int dstIndex, amdsmi_link_type_t*
         }
         if (found_src && found_dst) break;
       }
-      if (!found_src) ERROR("amd-smi could not find processor handle for srcIndex: %d", srcIndex);
-      if (!found_dst) ERROR("amd-smi could not find processor handle for dstIndex: %d", dstIndex);
+      if (!found_src) {
+        ERROR("amd-smi could not find processor handle for srcIndex: %d", srcIndex);
+        return ncclInternalError;
+      }
+      if (!found_dst) {
+        ERROR("amd-smi could not find processor handle for dstIndex: %d", dstIndex);
+        return ncclInternalError;
+      }
       AMDSMITRY(amdsmi_topo_get_link_type, src_processor_handle, dst_processor_handle, &amdsmi_hops, &amdsmi_type);
       AMDSMITRY(amdsmi_topo_get_link_weight, src_processor_handle, dst_processor_handle, &amdsmi_weight);
 
@@ -581,7 +591,7 @@ ncclResult_t amd_smi_getFirmwareVersion(uint32_t deviceIndex, uint64_t* fwVersio
     return ncclSuccess; // Firmware query not supported on WSL2
   }
 
-  if (rcclParamUseAmdSmiLib()) {
+  if (amdSmiLibInitialized) {
     // Use AMD SMI library
     amdsmi_processor_handle procHandle;
     NCCLCHECK(getProcessorHandle(deviceIndex, &procHandle));
@@ -636,7 +646,7 @@ ncclResult_t amd_smi_ensureFabricInitialized() {
     return fabricInitResult;
   }
 
-  bool useSysfs = !rcclParamUseAmdSmiLib();
+  bool useSysfs = !amdSmiLibInitialized;
 
   // Get and validate device count (common to both paths)
   uint32_t numDevs = 0;
@@ -822,7 +832,7 @@ ncclResult_t amd_smi_getFabricBandwidth(uint32_t deviceIndex, uint32_t* bandwidt
 
 ncclResult_t amd_smi_allocFabricTelemetry(uint32_t deviceIndex, uint32_t categoryMask,
                                           amdsmi_fabric_telemetry_t** telemetry) {
-  if (!rcclParamUseAmdSmiLib()) {
+  if (!amdSmiLibInitialized) {
     return ncclSystemError;
   }
 
@@ -835,7 +845,7 @@ ncclResult_t amd_smi_allocFabricTelemetry(uint32_t deviceIndex, uint32_t categor
 }
 
 ncclResult_t amd_smi_getFabricTelemetryData(uint32_t deviceIndex, amdsmi_fabric_telemetry_t* telemetry) {
-  if (!rcclParamUseAmdSmiLib() || telemetry == nullptr) {
+  if (!amdSmiLibInitialized || telemetry == nullptr) {
     return ncclSystemError;
   }
   amdsmi_processor_handle procHandle;
@@ -847,7 +857,7 @@ ncclResult_t amd_smi_getFabricTelemetryData(uint32_t deviceIndex, amdsmi_fabric_
 }
 
 ncclResult_t amd_smi_freeFabricTelemetry(uint32_t deviceIndex, amdsmi_fabric_telemetry_t* telemetry) {
-  if (!rcclParamUseAmdSmiLib() || telemetry == nullptr) {
+  if (!amdSmiLibInitialized || telemetry == nullptr) {
     return ncclSystemError;
   }
 
