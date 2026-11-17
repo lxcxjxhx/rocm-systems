@@ -1020,3 +1020,29 @@ int rocjitsu::arith::mul_f32_compatibility_staged(uint64_t flags, uint64_t exec_
                : binary_policy_wave64<Binary::Mul>(flags, exec_mask, modifiers, d, a, b, state,
                                                    write_mask);
 }
+
+// Preserve inherited multiplication without qualifying gfx1250 numeric or FP-status models.
+int rj_arith_v_mul_f32_w32_gfx1250(uint64_t flags, uint32_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if ((flags & RJ_ARITH_SEMANTICS_MASK) == RJ_ARITH_SEMANTICS_BIT_EXACT_EMPIRICAL_NO_FP_STATUS) {
+    return RJ_ARITH_ERROR_UNSUPPORTED_SEMANTICS;
+  }
+  if ((flags & RJ_ARITH_SEMANTICS_MASK) == RJ_ARITH_SEMANTICS_BIT_EXACT_EMPIRICAL) {
+    return RJ_ARITH_ERROR_UNSUPPORTED_FP_STATUS;
+  }
+  return rj_arith_v_mul_f32_w32_gfx12(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
+
+// Preserve inherited multiplication without qualifying gfx1250 numeric or FP-status models.
+int rj_arith_v_mul_f32_w64_gfx1250(uint64_t flags, uint64_t exec_mask, uint64_t instruction_flags,
+                                   uint32_t *const *d, const uint32_t *const *a,
+                                   const uint32_t *const *b, uint32_t *excp_flag_user) {
+  if ((flags & RJ_ARITH_SEMANTICS_MASK) == RJ_ARITH_SEMANTICS_BIT_EXACT_EMPIRICAL_NO_FP_STATUS) {
+    return RJ_ARITH_ERROR_UNSUPPORTED_SEMANTICS;
+  }
+  if ((flags & RJ_ARITH_SEMANTICS_MASK) == RJ_ARITH_SEMANTICS_BIT_EXACT_EMPIRICAL) {
+    return RJ_ARITH_ERROR_UNSUPPORTED_FP_STATUS;
+  }
+  return rj_arith_v_mul_f32_w64_gfx12(flags, exec_mask, instruction_flags, d, a, b, excp_flag_user);
+}
