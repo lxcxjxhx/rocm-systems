@@ -1093,11 +1093,11 @@ TEST_F(Gfx1250SplitBarrierHookTest, JoinAndInitDiscardPendingRound) {
 
 // These signals act as S_NOP (CDNA5 ISA 5.6, 5.6.3 and 15.3, S_BARRIER_SIGNAL):
 // the null barrier, an unallocated named barrier, the trap barrier without
-// PRIV, a cluster barrier outside a cluster, and any barrier in a single-wave
-// workgroup. The matching waits act as S_NOP too.
+// PRIV, the cluster and cluster trap barriers outside a cluster, and any
+// barrier in a single-wave workgroup. The matching waits act as S_NOP too.
 TEST_F(Gfx1250SplitBarrierHookTest, IgnoredSignalsFireNoHook) {
   constexpr int32_t kUnallocatedNamedBarrier = 5; // SetUp allocates 1-4.
-  for (int32_t id : {0, kUnallocatedNamedBarrier, -2, -3}) {
+  for (int32_t id : {0, kUnallocatedNamedBarrier, -2, -3, -4}) {
     SCOPED_TRACE(id);
     EXPECT_FALSE(wf0->barrier_signal(id, 0));
     wf0->barrier_wait(id);

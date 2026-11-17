@@ -2631,8 +2631,8 @@ TEST_F(TensorDmaRaceTest, AsynccntWaitAfterSignalRacesInAnotherWave) {
   EXPECT_NE(report.find("wave=1 lane=0"), std::string::npos) << report;
 }
 
-// Wave 1 ends after its own wait for the round; wave 0 still acquires the
-// round at its wait, and the round leaves no state behind.
+// Wave 1 ends after the round completes, without passing its wait; wave 0
+// still acquires the round at its wait, and the round leaves no state behind.
 TEST_F(TensorDmaRaceTest, HaltDuringOpenRoundReleasesState) {
   const BarrierRound round = workgroup_round(0);
   EXPECT_FALSE(ds_write(1, 64));

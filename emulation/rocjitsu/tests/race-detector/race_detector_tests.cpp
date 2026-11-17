@@ -2781,6 +2781,10 @@ TEST(RaceDetector, SplitBarrier_TransfersCompletedAfterSignalRace) {
 // Counter-capacity backpressure completes the oldest write before the signal,
 // so the signal releases it; the newest write is still in flight.
 TEST(RaceDetector, SplitBarrier_CapacityCompletionBeforeSignalIsReleased) {
+  // RaceTestBuilder gives its detector the CDNA4 counter capacities, and its
+  // default ldsWrite() counts on LGKMCNT. Which counter fills does not matter
+  // here: the test is that a completion by backpressure is released like one
+  // by an explicit wait.
   constexpr int kLgkmcntCapacity = counterCapacitiesForArch(ROCJITSU_CODE_ARCH_CDNA4).lgkmcnt;
   RaceTestBuilder b(/*numWaves=*/2, /*vgprs=*/8, /*sgprs=*/8, kWave32);
   const BarrierRoundId round = RaceTestBuilder::workgroupRound(0);
