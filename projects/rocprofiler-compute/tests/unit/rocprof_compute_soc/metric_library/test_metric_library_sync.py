@@ -32,6 +32,7 @@ from validate_metric_library import (
 import config
 from rocprof_compute_soc.metric_library import loader
 from rocprof_compute_soc.soc_base import OmniSoC_Base, iter_analysis_config_metrics
+from utils.analysis_views import MAIN_COLUMNS
 from utils.mi_gpu_spec import mi_gpu_specs
 from utils.utils_common import (
     MEMBW_ANALYSIS_PANEL_ID,
@@ -51,8 +52,6 @@ class Row(NamedTuple):
     unit: Optional[str]
 
 
-# Main equation columns, in order of preference.
-MAIN_FORMS = ("avg", "value", "expr")
 # Row value columns read as fields, not as equations.
 ROW_FIELDS = ("unit", "peak")
 # Kernel time divisors in seconds (Bytes/s rows) and in nanoseconds (GB/s rows).
@@ -188,7 +187,7 @@ UNIT_VARIANTS["gfx1250"] = {
 
 def row_forms(table: Dict[str, Any], row: Dict[str, Any]) -> List[str]:
     """Return the columns of row with an equation."""
-    main_forms = [form for form in MAIN_FORMS if form in row]
+    main_forms = [form for form in MAIN_COLUMNS if form in row]
     if main_forms:
         return main_forms[:1]
     return [
