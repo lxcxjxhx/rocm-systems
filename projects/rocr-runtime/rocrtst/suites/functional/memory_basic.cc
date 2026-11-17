@@ -452,15 +452,15 @@ void MemoryTest::MemAvailableTest(hsa_agent_t ag, hsa_amd_memory_pool_t pool) {
     allocate_sz1 = (rocrtst::kMaxTestAllocAsan / gran_sz) * gran_sz;
 #endif
 
-  // Sizing from the live figure can round to nothing when the device-wide
-  // figure is below two granules, and a zero-byte request is rejected as an
-  // invalid argument. That is another process holding the device, which is
-  // the condition this test declines to conclude under rather than failing.
+  // The size can round to nothing, and a zero-byte request is rejected as an
+  // invalid argument. Either the availability figure or the pool's own
+  // capacity can be the term that is below two granules, so this is not
+  // necessarily another process holding the device - a small pool reaches it
+  // on an idle machine. Decline to conclude rather than fail either way.
   if (allocate_sz1 == 0) {
     rocrtst::SkipCurrentTest(
-        "device-wide MEMORY_AVAIL is below two allocation granules, so no "
-        "allocation can be sized from it. This test needs exclusive use of "
-        "the device.");
+        "no allocation can be sized: availability or pool capacity is below "
+        "two allocation granules");
     return;
   }
 
@@ -541,6 +541,13 @@ void MemoryTest::MemAvailableTest(hsa_agent_t ag, hsa_amd_memory_pool_t pool) {
     allocate_sz2 = (rocrtst::kMaxTestAllocAsan / gran_sz) * gran_sz;
 #endif
 
+  // Same zero-size case as the first allocation above. memPtr1 is still held
+  // here; its scope guard releases it on the way out.
+  if (allocate_sz2 == 0) {
+    rocrtst::SkipCurrentTest(
+        "no second allocation can be sized from the remaining availability");
+    return;
+  }
 
   // memPtr1 is released by its scope guard if this allocation fails.
   err = hsa_amd_memory_pool_allocate(pool, allocate_sz2, 0, &memPtr2);

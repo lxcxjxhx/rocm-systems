@@ -319,10 +319,11 @@ hsa_status_t GetAgentPools(
 static constexpr size_t kMaxTestAllocAsan = 512ULL * 1024 * 1024;  // 512 MB
 #endif
 
-/// Granularity of HSA_AMD_AGENT_INFO_MEMORY_AVAIL where the figure is taken
-/// against VRAM. KFD charges a VRAM allocation rounded UP to this boundary,
-/// so two reads taken around an allocation can differ from the allocation
-/// size by up to one granule even when nothing else on the device moved.
+/// Granularity of HSA_AMD_AGENT_INFO_MEMORY_AVAIL on a part where the driver
+/// does not prefer GTT over VRAM - which is every discrete part, partitioned
+/// or not. There, KFD charges an allocation rounded UP to this boundary, so
+/// two reads taken around an allocation can differ from the allocation size
+/// by up to one granule even when nothing else on the device moved.
 ///
 /// KFD also rounds the figure it reports DOWN to the same boundary, but that
 /// rounding cancels between two reads and is not what the allowance below is
@@ -346,12 +347,14 @@ static constexpr size_t kMemAvailGranule = 2ULL * 1024 * 1024;  // 2 MB
 /// unbounded. Tests must instead DETECT that the figure was disturbed and
 /// decline to conclude: see MemAvailDisturbed() below.
 ///
-/// The granule above holds wherever the figure is taken against VRAM, which
-/// includes partitioned parts - partitioning changes the scope, not the
-/// granule. It is page-granular only where the figure is reported against the
-/// system-memory limit, and this tolerance is then far coarser than the true
-/// rounding - it will not cause a false failure, but it will absorb a
-/// correspondingly small disturbance rather than detecting it.
+/// The granule above holds on every part that does not prefer GTT over VRAM,
+/// partitioned or not - partitioning changes the scope, not the granule. On a
+/// part that does prefer GTT, an APU whose VRAM is smaller than its GTT
+/// aperture, both the charge and the reported figure are page-granular
+/// instead, whichever limit the figure ends up being taken against. This
+/// tolerance is then far coarser than the true rounding - it will not cause a
+/// false failure, but it will absorb a correspondingly small disturbance
+/// rather than detecting it.
 static constexpr size_t kMemAvailTolerance = 2 * kMemAvailGranule;  // 4 MB
 
 /// Absolute difference between two memory-availability readings. The readings
