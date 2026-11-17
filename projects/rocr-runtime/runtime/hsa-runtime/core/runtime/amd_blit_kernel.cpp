@@ -680,7 +680,11 @@ void BlitKernel::SubmitDependentSignalBarriers(uint64_t barrier_start_index,
   if (dep_signals.empty()) return;
 
   // Insert barrier packets to handle dependent signals.
-  // Barrier bit keeps signal checking traffic from competing with a copy.
+  //
+  // The header sets the packet type and both fence scopes only; the barrier
+  // bit is deliberately left clear. Ordering comes from the read index
+  // advancing strictly in order, which a BARRIER_AND holds up until its
+  // dependencies are satisfied - the bit would add nothing.
   const uint16_t kBarrierPacketHeader = (HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE) |
       (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE) |
       (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
