@@ -455,6 +455,16 @@ void MemoryTest::MemAvailableTest(hsa_agent_t ag, hsa_amd_memory_pool_t pool) {
   err = hsa_amd_memory_pool_allocate(pool, allocate_sz1, 0, &memPtr1);
   ASSERT_EQ(err, HSA_STATUS_SUCCESS);
 
+  // Release this allocation on every path out of the function. Every check
+  // between here and the explicit free below is a fatal assertion, so any one
+  // of them returns with the allocation still held - and it is half of what
+  // the device had free. Held for the life of the process, it starves every
+  // later agent and pool in the same run, so one failure here reappears as
+  // unrelated allocation failures in the pools tested afterwards.
+  MAKE_NAMED_SCOPE_GUARD(memPtr1Guard, [&]() {
+    EXPECT_SUCCESS(hsa_amd_memory_pool_free(memPtr1)) << "Cleanup of memPtr1 failed";
+  });
+
   hsa_amd_pointer_info_t info = {};
   info.size = sizeof(info);
 
@@ -504,9 +514,7 @@ void MemoryTest::MemAvailableTest(hsa_agent_t ag, hsa_amd_memory_pool_t pool) {
   // Record it, but do not judge it yet. MEMORY_AVAIL is device-wide, so this
   // reading is only attributable to this process if nothing else touched the
   // GPU during the test. That is established at the end of the test, after
-  // everything allocated here has been released - see below. Asserting here
-  // would also leave both allocations leaked for the rest of the process,
-  // because a fatal assertion returns before the frees.
+  // everything allocated here has been released - see below.
   uint64_t ag_avail_after_alloc1 = ag_avail_memory_after;
 
   // Try to allocate 30%/80% of remaining
@@ -522,12 +530,13 @@ void MemoryTest::MemAvailableTest(hsa_agent_t ag, hsa_amd_memory_pool_t pool) {
 #endif
 
 
+  // memPtr1 is released by its scope guard if this allocation fails.
   err = hsa_amd_memory_pool_allocate(pool, allocate_sz2, 0, &memPtr2);
-  if (err != HSA_STATUS_SUCCESS) {
-    hsa_status_t free_err = hsa_amd_memory_pool_free(memPtr1);
-    EXPECT_EQ(free_err, HSA_STATUS_SUCCESS) << "Cleanup of memPtr1 failed";
-  }
   ASSERT_EQ(err, HSA_STATUS_SUCCESS);
+
+  MAKE_NAMED_SCOPE_GUARD(memPtr2Guard, [&]() {
+    EXPECT_SUCCESS(hsa_amd_memory_pool_free(memPtr2)) << "Cleanup of memPtr2 failed";
+  });
 
   err = hsa_agent_get_info(ag, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_AVAIL,
                             &ag_avail_memory_after);
@@ -542,10 +551,14 @@ void MemoryTest::MemAvailableTest(hsa_agent_t ag, hsa_amd_memory_pool_t pool) {
     std::cout << "   Available memory after: " << ag_avail_memory_after << std::endl;
   }
 
+  // Dismiss each guard as soon as its free has been attempted, whatever the
+  // status: the memory must not be handed to hsa_amd_memory_pool_free twice.
   err = hsa_amd_memory_pool_free(memPtr1);
+  memPtr1Guard.Dismiss();
   ASSERT_EQ(err, HSA_STATUS_SUCCESS);
 
   err = hsa_amd_memory_pool_free(memPtr2);
+  memPtr2Guard.Dismiss();
   ASSERT_EQ(err, HSA_STATUS_SUCCESS);
 
   DrainAsanQuarantine();

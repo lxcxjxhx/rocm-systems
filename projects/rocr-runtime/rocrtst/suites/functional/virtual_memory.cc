@@ -1331,10 +1331,22 @@ void VirtMemoryTestBasic::MemoryAccountingTest(hsa_agent_t agent, hsa_amd_memory
   ASSERT_SUCCESS(hsa_agent_get_info(agent, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_AVAIL, &amount_begin));
   ASSERT_SUCCESS(hsa_amd_vmem_address_reserve(&reserved_addr, allocation_size, 0, 0));
 
+  // Everything acquired from here on is released on every path out of the
+  // function. The checks in between are fatal assertions, so any one of them
+  // returns from the middle of the sequence, and whatever is still held stays
+  // held for the life of the process - where it both leaks and perturbs the
+  // device-wide availability figure that the pools tested afterwards read.
+  // The guards destruct in reverse order of declaration, which is the order
+  // these resources have to be given back in: unmap, release, free.
+  MAKE_NAMED_SCOPE_GUARD(addrGuard,
+                         [&]() { EXPECT_SUCCESS(hsa_amd_vmem_address_free(reserved_addr, allocation_size)); });
+
   hsa_amd_pointer_info_t ptr_info = {};
   ptr_info.size = sizeof(ptr_info);
   ASSERT_SUCCESS(hsa_amd_pointer_info(reserved_addr, &ptr_info, nullptr, nullptr, nullptr));
   ASSERT_SUCCESS(hsa_amd_vmem_handle_create(pool, allocation_size, MEMORY_TYPE_NONE, 0, &mem_handle));
+
+  MAKE_NAMED_SCOPE_GUARD(handleGuard, [&]() { EXPECT_SUCCESS(hsa_amd_vmem_handle_release(mem_handle)); });
 
   ASSERT_SUCCESS(hsa_agent_get_info(agent, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_AVAIL, &amount_current));
   // Record it, but do not judge it yet. MEMORY_AVAIL is device-wide, so this
@@ -1345,12 +1357,25 @@ void VirtMemoryTestBasic::MemoryAccountingTest(hsa_agent_t agent, hsa_amd_memory
 
   ASSERT_SUCCESS(hsa_amd_vmem_map(reserved_addr, allocation_size, 0, mem_handle, 0));
 
+  MAKE_NAMED_SCOPE_GUARD(mapGuard,
+                         [&]() { EXPECT_SUCCESS(hsa_amd_vmem_unmap(reserved_addr, allocation_size)); });
+
   hsa_amd_memory_access_desc_t access_desc = {HSA_ACCESS_PERMISSION_RW, agent};
   ASSERT_SUCCESS(hsa_amd_vmem_set_access(reserved_addr, allocation_size, &access_desc, 1));
 
-  ASSERT_SUCCESS(hsa_amd_vmem_unmap(reserved_addr, allocation_size));
-  ASSERT_SUCCESS(hsa_amd_vmem_handle_release(mem_handle));
-  ASSERT_SUCCESS(hsa_amd_vmem_address_free(reserved_addr, allocation_size));
+  // Dismiss each guard as soon as its release has been attempted, whatever the
+  // status: none of these may be given back twice.
+  err = hsa_amd_vmem_unmap(reserved_addr, allocation_size);
+  mapGuard.Dismiss();
+  ASSERT_SUCCESS(err);
+
+  err = hsa_amd_vmem_handle_release(mem_handle);
+  handleGuard.Dismiss();
+  ASSERT_SUCCESS(err);
+
+  err = hsa_amd_vmem_address_free(reserved_addr, allocation_size);
+  addrGuard.Dismiss();
+  ASSERT_SUCCESS(err);
 
   ASSERT_SUCCESS(hsa_agent_get_info(agent, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_AVAIL, &amount_current));
   // Everything reserved here has been released, so the figure should be back
