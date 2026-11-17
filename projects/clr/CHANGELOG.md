@@ -21,6 +21,13 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
       * `hipArrayGetSparseProperties` returns the layout properties of a sparse HIP array in a
         `hipArraySparseProperties` structure. Added for source compatibility: AMD devices do not
         support sparse arrays, so it zeroes the structure and returns `hipErrorNotSupported`.
+    - Graph Management: `hipStreamBeginRecaptureToGraph` captures a stream into an existing graph
+      by matching each operation, in creation order, against the existing nodes and updating those
+      nodes in place. Node handles are preserved, so an instantiated executable can be refreshed
+      with `hipGraphExecUpdate`. `hipErrorGraphRecaptureFailure` (918) is returned when a captured
+      operation does not match or an original node is left unmatched. Adding a node directly, or
+      destroying a node, on a graph that is being recaptured returns an error and does not change
+      the graph.
 
 ### Resolved issues
 

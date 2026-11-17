@@ -107,6 +107,7 @@ REGISTER_FAT_BINARY = {
     13: 552,
     14: 555,
     15: 559,
+    16: 560,
 }
 FAT_BINARY_HASH_OFFSET = EVENT_HEADER_BYTES + 8
 HARDWARE_ID_FIELDS = ("pci", "uuid", "luid")

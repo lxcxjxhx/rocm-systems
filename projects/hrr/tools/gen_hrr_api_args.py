@@ -2111,8 +2111,11 @@ _HEADER_PREAMBLE = """\
  * as the wrong API.
  * v15: four graph ID queries were appended to HipDispatchTable, shifting the
  * compiler API IDs up by four. A v14 reader would decode those events as the
- * wrong API. */
-#define HRR_VERSION ((uint16_t)15u)
+ * wrong API.
+ * v16: hipStreamBeginRecaptureToGraph was appended to HipDispatchTable,
+ * shifting the compiler API IDs up by one. A v15 reader would decode those
+ * events as the wrong API. */
+#define HRR_VERSION ((uint16_t)16u)
 
 /* Written once at byte 0 of events.bin. */
 #pragma pack(push, 1)
@@ -2684,15 +2687,16 @@ CUSTOM_CAPTURE_SHIMS: Dict[str, str] = {
         "  return r;\n"
         "}\n"
     ),
-    # hipStreamEndCapture on an invalidated or unjoined capture fails, yields no
-    # graph, and still ends the capture. Record those failures too, or replay
-    # never ends its own capture and treats every later call as captured.
+    # hipStreamEndCapture on an invalidated, unjoined, or incomplete recapture
+    # fails, yields no graph, and still ends the capture. Record those failures
+    # too, or replay never ends its own capture and treats every later call as
+    # captured.
     "hipStreamEndCapture": (
         "// Generated shim (custom: also record the failures that end the capture)\n"
         "static hipError_t capture_hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {\n"
         "  hipError_t r = g_real_table.hipStreamEndCapture_fn(stream, pGraph);\n"
         "  if (r == hipSuccess || r == hipErrorStreamCaptureInvalidated ||\n"
-        "      r == hipErrorStreamCaptureUnjoined) {\n"
+        "      r == hipErrorStreamCaptureUnjoined || r == hipErrorGraphRecaptureFailure) {\n"
         "    hrr_args_hipStreamEndCapture a{};\n"
         "    a.ret         = static_cast<int32_t>(r);\n"
         "    a.stream = reinterpret_cast<uint64_t>(stream);\n"
@@ -2733,9 +2737,11 @@ CUSTOM_PLAYBACK_BODIES: Dict[str, str] = {
         "    }\n"
         "    return hipSuccess;\n"
         "  }\n"
-        "  return (hipError_t)_fn(\n"
+        "  hipError_t _r = (hipError_t)_fn(\n"
         "      (hipStream_t)ctx.translate_stream(a->stream), (hipStreamCaptureMode)a->mode,\n"
         "      (hipGraph_t)ctx.translate_graph(a->graph), nullptr);\n"
+        "  if (_r == hipSuccess) ctx.in_graph_capture = true;\n"
+        "  return _r;\n"
         "}\n"
     ),
 }
