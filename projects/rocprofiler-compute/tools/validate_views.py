@@ -19,7 +19,7 @@ views keep the analysis configs' structure.
 
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
@@ -32,12 +32,6 @@ from utils.analysis_views import (
     view_metric_errors,
     view_schema_errors,
 )
-
-
-# Moves to MetricLibrary.collectable_formulas() in the analyze cutover.
-def _collectable_formulas(library: loader.MetricLibrary) -> Dict[str, str]:
-    """Return the formula of each collectable of library, by name."""
-    return {name: entry["formula"] for name, entry in library.collectables.items()}
 
 
 def validate(views_dir: Path, metric_dir: Path) -> List[str]:
@@ -62,7 +56,7 @@ def validate(views_dir: Path, metric_dir: Path) -> List[str]:
             for error in view_metric_errors(
                 load_views(arch, views_dir),
                 library.metrics,
-                _collectable_formulas(library),
+                library.collectable_formulas(),
             )
         )
     return errors

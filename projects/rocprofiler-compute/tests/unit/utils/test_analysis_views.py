@@ -53,19 +53,13 @@ BROKEN_VIEW = {
 }
 
 
-# Moves to MetricLibrary.collectable_formulas() in the analyze cutover.
-def _collectable_formulas(library):
-    """Return the formula of each collectable of library, by name."""
-    return {name: entry["formula"] for name, entry in library.collectables.items()}
-
-
 def metric_rows(arch):
     """Return the arch's views, metrics, and panel config rows by numeric id."""
     views = load_views(arch)
     library = loader.MetricLibrary.load(loader.default_metric_library_dir(), arch)
     metrics = library.metrics
     rows = {}
-    panels = views_to_panel_configs(views, metrics, _collectable_formulas(library))
+    panels = views_to_panel_configs(views, metrics, library.collectable_formulas())
     for panel in panels.values():
         for source in panel["data source"]:
             table = source.get("metric_table")
@@ -137,7 +131,7 @@ def test_view_metric_errors():
     and a Min and Max over summed collectables without per-dispatch partners."""
     views = load_views(ARCH)
     library = loader.MetricLibrary.load(loader.default_metric_library_dir(), ARCH)
-    collectables = _collectable_formulas(library)
+    collectables = library.collectable_formulas()
     assert view_metric_errors(views, library.metrics, collectables) == []
     broken = copy.deepcopy(views)
     rows = dict(iter_view_rows(broken))

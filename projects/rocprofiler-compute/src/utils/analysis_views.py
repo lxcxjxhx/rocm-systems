@@ -173,7 +173,7 @@ def views_to_panel_configs(
         views: One arch's views by panel id (load_views()).
         metrics: The arch's metric library metrics (MetricLibrary.metrics).
         collectables: The arch's collectable formulas by name
-            (MetricLibrary.collectables' formulas).
+            (MetricLibrary.collectable_formulas()).
 
     Returns:
         Each view's panel config, keyed by panel id, in panel id order.
