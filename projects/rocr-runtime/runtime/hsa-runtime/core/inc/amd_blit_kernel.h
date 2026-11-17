@@ -45,6 +45,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <vector>
 #include <atomic>
@@ -248,8 +249,15 @@ class BlitKernel : public core::Blit {
   /// its reservations drain on GPU progress alone. @p submit must therefore
   /// not carry dependencies, and must already be past every failure path -
   /// there is no caller left to return a status to.
+  ///
+  /// @p abandon runs instead of @p submit if the blit is destroyed before the
+  /// dependencies resolve, and must release the completion signal. This call
+  /// reports success to its caller, so the copy may already have a thread
+  /// waiting on that signal; dropping the work without releasing it would
+  /// leave the waiter blocked forever rather than merely losing the copy.
   hsa_status_t DeferUntilDepsResolved(const std::vector<core::Signal*>& pending_deps,
-                                      std::function<void()> submit);
+                                      std::function<void()> submit,
+                                      std::function<void()> abandon);
 
   KernelArgs* ObtainAsyncKernelCopyArg();
 
@@ -302,6 +310,23 @@ class BlitKernel : public core::Blit {
 
   /// Lock to synchronize access to kernarg_ and completion_signal_
   std::mutex lock_;
+
+  /// Shared between this blit and every submission it has deferred.
+  ///
+  /// A deferred submission is owned by the runtime's async handler threads,
+  /// which Runtime::Unload only stops after Agent::ReleaseResources has already
+  /// destroyed the blits and their queues. A handler that fired in that window
+  /// would submit against a destroyed queue, so it has to be able to ask
+  /// whether the blit is still alive without touching the blit itself. Holding
+  /// this separately and by shared_ptr keeps that question answerable for as
+  /// long as any deferred submission survives.
+  struct DeferralGuard {
+    /// Held across both the flag write and the deferred submission, so the two
+    /// cannot interleave.
+    std::mutex lock;
+    bool blit_destroyed = false;
+  };
+  std::shared_ptr<DeferralGuard> deferral_guard_;
 
   /// Number of CUs on the underlying agent.
   int num_cus_;

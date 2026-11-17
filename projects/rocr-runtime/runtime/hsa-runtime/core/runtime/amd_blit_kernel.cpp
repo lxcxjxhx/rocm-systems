@@ -541,6 +541,7 @@ BlitKernel::BlitKernel(core::Queue* queue)
       bytes_queued_(0),
       last_queued_(0),
       pending_search_index_(0),
+      deferral_guard_(std::make_shared<DeferralGuard>()),
       num_cus_(0) {
   completion_signal_.handle = 0;
 }
@@ -604,6 +605,15 @@ hsa_status_t BlitKernel::Initialize(const core::Agent& agent) {
 }
 
 hsa_status_t BlitKernel::Destroy() {
+  // Close the door on deferred submissions before any resource goes away. A
+  // handler already inside its submission holds this lock, so it finishes
+  // against a queue that is still whole; one that arrives afterwards sees the
+  // flag and does nothing.
+  {
+    std::lock_guard<std::mutex> deferral(deferral_guard_->lock);
+    deferral_guard_->blit_destroyed = true;
+  }
+
   std::lock_guard<std::mutex> guard(lock_);
 
   const AMD::GpuAgent* gpuAgent = static_cast<const AMD::GpuAgent*>(agent_);
@@ -915,17 +925,22 @@ uint64_t BlitKernel::AcquireWriteIndex(uint32_t num_packet) {
 
   while (true) {
     // Wait for room BEFORE publishing the reservation, not after. Advancing the
-    // write index first leaves it pointing past the end of the ring, at slots
-    // this call has not written yet and which still hold the previous wrap's
-    // packets, headers and all. Two things go wrong there. The packet processor
-    // may consume those stale packets, and - when the write index ends up an
-    // exact multiple of the ring size ahead of the read index - the two indices
-    // are congruent modulo the ring size, which reads as an empty queue. The
-    // packet processor then goes idle with a full ring of work outstanding, so
-    // nothing retires and the drain this thread is waiting for can never
-    // happen. Reserving only space that already exists keeps the write index
-    // within one ring of the read index at all times, which is what makes the
-    // two unambiguous.
+    // write index first leaves it pointing at slots this call has not written
+    // yet and which still hold the previous wrap's packets, headers and all.
+    // Retired slots are never reset to INVALID, so those headers are still
+    // valid and the packet processor may execute them: the INVALID-first
+    // protocol in PopulateQueue only protects a slot from the moment its
+    // INVALID header lands, which is after this function returns.
+    //
+    // Advancing first can also push the write index more than one ring ahead of
+    // the read index, which is not a representable state - two live
+    // reservations would map onto the same slot. Reserving only space that
+    // already exists keeps write - read <= queue_size at all times, so the
+    // index-to-slot mapping stays one to one.
+    //
+    // The bound below is > rather than >=: the dispatch ids are absolute and
+    // are never reduced modulo the ring, so write == read + queue_size is a
+    // full ring, not an ambiguous one, and admitting it is correct.
     while (write_index + num_packet - queue_->LoadReadIndexRelaxed() > queue_size) {
       os::YieldThread();
       write_index = queue_->LoadWriteIndexRelaxed();
@@ -1098,15 +1113,21 @@ uint32_t BlitKernel::MaxDispatchesPerReservation(uint32_t num_barrier_packet) co
 }
 
 hsa_status_t BlitKernel::DeferUntilDepsResolved(const std::vector<core::Signal*>& pending_deps,
-                                                std::function<void()> submit) {
+                                                std::function<void()> submit,
+                                                std::function<void()> abandon) {
   assert(!pending_deps.empty() && "deferral with nothing to wait on never fires");
 
   struct DeferredSubmit {
     std::function<void()> submit;
+    std::function<void()> abandon;
+    /// Keeps the answer to "is the blit still alive" reachable even after the
+    /// blit itself is gone, so the handler never dereferences a dead queue.
+    std::shared_ptr<DeferralGuard> guard;
     std::atomic<uint32_t> remaining;
   };
 
-  DeferredSubmit* op = new DeferredSubmit{std::move(submit), {}};
+  DeferredSubmit* op =
+      new DeferredSubmit{std::move(submit), std::move(abandon), deferral_guard_, {}};
   op->remaining.store(uint32_t(pending_deps.size()), std::memory_order_release);
 
   // Each dependency calls this when it reaches zero; the last one in runs the
@@ -1114,7 +1135,20 @@ hsa_status_t BlitKernel::DeferUntilDepsResolved(const std::vector<core::Signal*>
   static hsa_amd_signal_handler handler = [](hsa_signal_value_t value, void* arg) {
     DeferredSubmit* op = reinterpret_cast<DeferredSubmit*>(arg);
     if (op->remaining.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-      op->submit();
+      {
+        // Destroy takes this same lock to set the flag, so the blit cannot be
+        // torn down in the middle of a submission, and a submission cannot
+        // start after teardown has begun. The queue the work would have used no
+        // longer exists, so the copy has to be abandoned - but the caller was
+        // told this call succeeded and may be waiting on the completion signal,
+        // so abandoning has to release that signal rather than merely drop the
+        // work. Leaving it raised would hang the waiter instead of the copy.
+        std::lock_guard<std::mutex> deferral(op->guard->lock);
+        if (!op->guard->blit_destroyed)
+          op->submit();
+        else
+          op->abandon();
+      }
       delete op;
     }
     return false;
@@ -1123,6 +1157,15 @@ hsa_status_t BlitKernel::DeferUntilDepsResolved(const std::vector<core::Signal*>
   // SetAsyncSignalHandler currently always succeeds. If that ever changes,
   // failing part way would leave some handlers registered against op and the
   // rest never firing, so op could be neither run nor safely deleted here.
+  //
+  // op is freed by whichever handler observes the last dependency fall to zero.
+  // Dependencies that never resolve therefore strand it, which can only happen
+  // if the process tears the runtime down with a copy still gated on a signal
+  // nothing will ever satisfy. There is no unregister counterpart to
+  // SetAsyncSignalHandler to reclaim it from here, and freeing it while those
+  // registrations stand would be worse than leaking it, so it is left for
+  // process exit: bounded by the number of such copies, and unreachable while
+  // the caller honors the API contract.
   for (size_t i = 0; i < pending_deps.size(); ++i) {
     core::Runtime::runtime_singleton_->SetAsyncSignalHandler(
         core::Signal::Convert(pending_deps[i]), HSA_SIGNAL_CONDITION_EQ, 0, handler, op);
@@ -1171,27 +1214,40 @@ hsa_status_t BlitKernel::SubmitSwapCopyCommand(uint32_t num_entries, void* const
 
   // A batch that spans reservations must not also carry dependency barriers -
   // see DeferUntilDepsResolved for why the combination cannot make progress.
-  // Signals already at zero gate nothing, so they are dropped first; that
-  // alone keeps the overwhelming majority of batches on the direct path. Swap
-  // reaches this bound easily, emitting at least one dispatch per entry, so a
-  // few dozen entries can already exceed one reservation.
-  if (total_dispatches > MaxDispatchesPerReservation(num_barrier_packet)) {
-    std::vector<core::Signal*> pending_deps;
-    for (core::Signal* dep : dep_signals) {
-      if (dep->LoadRelaxed() != 0) pending_deps.push_back(dep);
-    }
-    if (!pending_deps.empty()) {
-      // Copied because the lists outlive this call once it defers. All three
-      // are validated above, so the resubmission cannot fail.
-      std::vector<void*> a(addr_a_list, addr_a_list + num_entries);
-      std::vector<void*> b(addr_b_list, addr_b_list + num_entries);
-      std::vector<size_t> sizes(size_list, size_list + num_entries);
-      core::Signal* out = &out_signal;
-      return DeferUntilDepsResolved(pending_deps, [this, a, b, sizes, out]() {
-        std::vector<core::Signal*> no_deps;
-        SubmitSwapCopyCommand(uint32_t(a.size()), a.data(), b.data(), sizes.data(), no_deps, *out);
-      });
-    }
+  // Swap reaches this bound easily, emitting at least one dispatch per entry,
+  // so a few dozen entries can already exceed one reservation.
+  //
+  // Every dependency is deferred on, including any that currently reads zero.
+  // Testing the value here and keeping the already-satisfied ones on the direct
+  // path would be reading a signal another thread is free to re-raise: the
+  // batch would then emit barriers it had decided it did not need, block
+  // retirement behind them, and spin forever acquiring its second reservation.
+  // A signal that really is settled costs only an immediate handler callback,
+  // which is the cheaper side of that trade.
+  if (total_dispatches > MaxDispatchesPerReservation(num_barrier_packet) &&
+      !dep_signals.empty()) {
+    // Copied because the lists outlive this call once it defers.
+    //
+    // The resubmission cannot fail. The lists and sizes are validated above;
+    // total_dispatches is non-zero by the check above; and the resubmission
+    // carries no dependencies, so its reservation bound is
+    // MaxDispatchesPerReservation(0), which is the ring size exactly and so
+    // always satisfies ReservationFits. That matters because the lambda
+    // returns void - there is no caller left to hand a status to.
+    std::vector<void*> a(addr_a_list, addr_a_list + num_entries);
+    std::vector<void*> b(addr_b_list, addr_b_list + num_entries);
+    std::vector<size_t> sizes(size_list, size_list + num_entries);
+    core::Signal* out = &out_signal;
+    return DeferUntilDepsResolved(
+        dep_signals,
+        [this, a, b, sizes, out]() {
+          std::vector<core::Signal*> no_deps;
+          SubmitSwapCopyCommand(uint32_t(a.size()), a.data(), b.data(), sizes.data(), no_deps,
+                                *out);
+        },
+        // Nothing was submitted and nothing raised the signal, so the caller's
+        // own count of one is all that stands between it and completion.
+        [out]() { out->SubRelease(1); });
   }
 
   // No reservation the loop takes can be larger than this. Checking it once up
@@ -1202,9 +1258,12 @@ hsa_status_t BlitKernel::SubmitSwapCopyCommand(uint32_t num_entries, void* const
 
   // Every dispatch carries out_signal and so decrements it once on retirement.
   // The caller has set it to 1, so raise it by the extra dispatches before any
-  // packet is made visible to the packet processor. Relaxed is sufficient: the
-  // release fence in ReleaseWriteIndex orders this ahead of the doorbell, and
-  // no dispatch exists to observe it before then.
+  // packet is made visible to the packet processor. Relaxed is sufficient, and
+  // for a reason that does not depend on how the packet processor decides to
+  // fetch: the write index is not advanced until AcquireWriteIndex runs inside
+  // the loop below, so until then no packet of this submission exists to be
+  // found at all. The acq_rel CAS that publishes it, and the release store of
+  // the doorbell, both sequence after this raise.
   if (total_dispatches > 1) out_signal.AddRelaxed(total_dispatches - 1);
 
   // Walk the entries as a flat stream of chunks, filling one queue reservation
