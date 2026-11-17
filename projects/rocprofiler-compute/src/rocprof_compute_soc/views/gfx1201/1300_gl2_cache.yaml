@@ -18,9 +18,7 @@ tables:
   - metric: gl2.atomic_req
     label: Atomic Requests
   - metric: gl2.ea_rd_req_dram
-    label: EA Read Requests (Memory)
   - metric: gl2.ea_wr_req_dram
-    label: EA Write Requests (Memory)
 - title: GL2 Cache Performance
   header:
     metric: Metric

@@ -642,11 +642,11 @@ Roofline Plot Points:
     plain: Arithmetic intensity relative to HBM bandwidth.
     rst: Arithmetic intensity relative to HBM bandwidth.
     unit: FLOPs/Byte
-  AI GL2:
+  AI L2:
     plain: Arithmetic intensity relative to GL1 bandwidth.
     rst: Arithmetic intensity relative to GL1 bandwidth.
     unit: FLOPs/Byte
-  AI GL0:
+  AI L0:
     plain: Arithmetic intensity relative to GL0 data bandwidth.
     rst: Arithmetic intensity relative to GL0 data bandwidth.
     unit: FLOPs/Byte

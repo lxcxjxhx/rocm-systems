@@ -28,14 +28,14 @@ tables:
     unit: Unit
   metrics:
   - metric: fabric.rd_bw_norm
-    label: Read BW
+    label: Read Bytes
   - metric: fabric.hbm_rd_traffic
   - metric: fabric.remote_rd_traffic
     label: Remote Read Traffic
   - metric: fabric.uncached_rd_traffic
     label: Uncached Read Traffic
   - metric: fabric.wr_atomic_bw_norm
-    label: Write and Atomic BW
+    label: Write and Atomic Bytes
   - metric: fabric.hbm_wr_atomic_traffic
   - metric: fabric.remote_wr_atomic_traffic
     label: Remote Write and Atomic Traffic

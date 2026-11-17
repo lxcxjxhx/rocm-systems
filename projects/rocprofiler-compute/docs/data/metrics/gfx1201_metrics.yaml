@@ -139,7 +139,7 @@ Roofline Performance Rates:
   LDS BW:
     rst: Indicates the maximum amount of bytes that could have been loaded from, stored to, or atomically updated in the LDS divided by total duration. Does not take into account the execution mask of the wavefront when the instruction was executed.
     unit: GB/s
-  L2 to Memory BW:
+  Memory Bandwidth:
     rst: The number of bytes the L2 cache (GL2C) reads from and writes to memory over the EA, divided by total duration. The counters count 32-byte granules. They include requests the Infinity Cache serves and cannot separate them, so this can be higher than true VRAM traffic and can exceed the measured VRAM peak.
     unit: GB/s
 Roofline Plot Points:
@@ -298,10 +298,10 @@ GL2 Cache Request Statistics:
   Atomic Requests:
     rst: Number of atomic memory operations processed by the GL2 cache. Atomics provide thread-safe memory access but may serialize at contended addresses. High counts may impact performance.
     unit: Count per Normalization Unit
-  EA Read Requests (Memory):
+  EA Read Requests (DRAM):
     rst: L2 read requests over EA destined for memory. Infinity Cache can serve these requests before they reach VRAM.
     unit: Count per Normalization Unit
-  EA Write Requests (Memory):
+  EA Write Requests (DRAM):
     rst: L2 write requests over EA destined for memory. Infinity Cache can absorb these requests before they reach VRAM.
     unit: Count per Normalization Unit
 GL2 Cache Performance:

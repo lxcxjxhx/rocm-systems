@@ -22,7 +22,6 @@ tables:
     label: LDS BW
     peak: empirical
   - metric: gl2.memory_bw
-    label: L2 to Memory BW
     peak: empirical
 - title: Roofline Plot Points
   header:

@@ -52,7 +52,7 @@ tables:
   - metric: fabric.ai_hbm
     label: AI HBM
   - metric: l2.ai
-    label: AI GL2
+    label: AI L2
   - metric: gl0.ai
-    label: AI GL0
+    label: AI L0
   - metric: compute.total_flops
