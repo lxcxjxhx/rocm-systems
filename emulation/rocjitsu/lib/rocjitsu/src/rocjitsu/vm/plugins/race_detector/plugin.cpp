@@ -115,13 +115,14 @@ bool supports_counter_capacity(rj_code_arch_t arch) {
 /// instruction leaves no older operation on those counters to complete, so
 /// either way its admission is sound.
 ///
-/// On CDNA3 and CDNA4, a buffer, global or scratch instruction issued with EXEC
+/// On CDNA1 through CDNA4, a buffer, global or scratch instruction issued with EXEC
 /// zero counts on VMCNT, in order with the wave's other vector memory
-/// instructions (both ISA manuals, sections 3.3, 4.4 and 10.5).
+/// instructions (all four ISA manuals, sections 3.3, 4.4 and 10.5).
 /// docs/race-detector.md lists the instructions measured on MI300X and MI355X.
 bool exec_zero_memory_issue_counts(rj_code_arch_t arch) {
-  return arch == ROCJITSU_CODE_ARCH_CDNA5 || arch == ROCJITSU_CODE_ARCH_CDNA4 ||
-         arch == ROCJITSU_CODE_ARCH_CDNA3;
+  return arch == ROCJITSU_CODE_ARCH_CDNA1 || arch == ROCJITSU_CODE_ARCH_CDNA2 ||
+         arch == ROCJITSU_CODE_ARCH_CDNA3 || arch == ROCJITSU_CODE_ARCH_CDNA4 ||
+         arch == ROCJITSU_CODE_ARCH_CDNA5;
 }
 
 /// The obligations on which a gfx1250 memory instruction issued with EXEC zero
@@ -132,7 +133,7 @@ bool exec_zero_memory_issue_counts(rj_code_arch_t arch) {
 /// it either counts or was skipped because they were empty, so admitting it and
 /// recording its slot are sound. On any other counter, such as the ASYNCcnt of
 /// ds_atomic_async_barrier_arrive_b64, an LDS instruction, it may be skipped
-/// while the counter is nonzero, so that obligation is left out. On CDNA3 and
+/// while the counter is nonzero, so that obligation is left out. On CDNA1 through
 /// CDNA4 only a buffer, global or scratch instruction keeps its VMCNT obligation;
 /// DS and FLAT instructions issued with EXEC zero were not measured there (see
 /// exec_zero_memory_issue_counts()).
@@ -183,7 +184,7 @@ bool ignored_memory_issue(const Instruction &inst, const amdgpu::Wavefront &wf) 
 /// Record a counter slot that an instruction holds without registers or LDS
 /// bytes, as an event, so that later capacity checks and partial waits count
 /// it. Two kinds of instruction hold one:
-/// - A gfx1250 or CDNA4 memory instruction issued with EXEC zero, on the counters
+/// - A CDNA memory instruction issued with EXEC zero, on the counters
 ///   exec_zero_counted_obligations() selects. Recording the slot is sound even
 ///   if the instruction was skipped: those counters were then zero, so every
 ///   earlier operation on them had completed, and oldest-first retirement
@@ -631,8 +632,8 @@ void RaceDetectorPlugin::onAmdgpuMemoryAccessRouted(const amdgpu::MemoryAccessOb
     register_unused_flat_domains(*rs, instruction, *decoded, *routed,
                                  inst.data_as<amdgpu::VectorMemState>()->is_load);
 
-  // A gfx1250 or CDNA4 instruction issued with wave EXEC zero holds its counter
-  // slot (see exec_zero_memory_issue_counts()). An access whose lanes are all
+  // A CDNA instruction issued with wave EXEC zero holds a slot on each counter
+  // selected by exec_zero_counted_obligations(). An access whose lanes are all
   // cleared while EXEC is active records none, and neither does an ignored
   // buffer instruction (see ignored_memory_issue()).
   const auto record_exec_zero_slot = [&](bool is_load) {
