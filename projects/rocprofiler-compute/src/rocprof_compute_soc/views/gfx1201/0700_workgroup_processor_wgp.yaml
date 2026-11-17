@@ -91,11 +91,9 @@ tables:
     unit: Unit
   metrics:
   - metric: compute.valu_insts
-    label: SQ_INSTS_VALU
     round: 0
     pct_of_peak: false
   - metric: compute.valu_inst_cycles
-    label: SQ_INST_CYCLES_VALU
     round: 0
     pct_of_peak: false
 - title: WMMA Instruction FLOPs and IOPs Counting
@@ -105,11 +103,9 @@ tables:
     unit: Unit
   metrics:
   - metric: compute.wmma_insts
-    label: SQ_WMMA_VALU_INSTS
     round: 0
     pct_of_peak: false
   - metric: compute.wmma_inst_cycles
-    label: SQ_INST_CYCLES_VALU_WMMA
     round: 0
     pct_of_peak: false
 - title: Instruction Cache

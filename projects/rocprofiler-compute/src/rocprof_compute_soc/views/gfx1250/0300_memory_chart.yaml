@@ -182,7 +182,6 @@ tables:
   - metric: ea.gmi_bw_wr
     label: GMI Write Bandwidth
   - metric: ea.stalled_by_sdp
-    label: EA Stall Rate
     round: 0
 - title: Workgroup Processors (WGPs)
   header:

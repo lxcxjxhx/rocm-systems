@@ -321,20 +321,20 @@ WGP LDS Instruction Mix:
     rst: Number of LDS parameter load instructions. These load shader input parameters that have been staged in LDS for efficient access by the wavefront.
     unit: Count per Normalization Unit
 WGP VALU Instruction Mix:
-  SQ_INSTS_VALU:
+  VALU Instructions:
     plain: Raw vector arithmetic instruction count. This includes integer and floating-point instructions and is not a FLOP count.
     rst: Raw vector arithmetic instruction count. This includes integer and floating-point instructions and is not a FLOP count.
     unit: Instructions
-  SQ_INST_CYCLES_VALU:
+  VALU Instruction Cycles:
     plain: Cycles needed to execute VALU operations, counting overlapping V_OP32_1 and V_OP32_T instructions separately.
     rst: Cycles needed to execute VALU operations, counting overlapping V_OP32_1 and V_OP32_T instructions separately.
     unit: Cycles
 WGP WMMA Instruction FLOPs and IOPs Counting:
-  SQ_WMMA_VALU_INSTS:
+  WMMA Instructions:
     plain: Number of WMMA instructions issued.
     rst: Number of WMMA instructions issued.
     unit: Instructions
-  SQ_INST_CYCLES_VALU_WMMA:
+  WMMA Instruction Cycles:
     plain: Cycles of work sent for WMMA.
     rst: Cycles of work sent for WMMA.
     unit: Cycles

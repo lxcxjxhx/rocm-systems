@@ -388,7 +388,7 @@ Memory chart - EA to HBM:
   GMI Write Bandwidth:
     rst: The number of bytes written to peer GPU HBM over Infinity Fabric through the EA, divided by total duration.
     unit: GB/s
-  EA Stall Rate:
+  EA Stalled by SDP:
     rst: Percentage of EA-busy cycles where the EA front end has a request ready but the EA back end is not ready to send it to the Scalable Data SOC (SDP).
     unit: Percent
   Outstanding Requests:
