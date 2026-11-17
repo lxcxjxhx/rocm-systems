@@ -51,6 +51,8 @@ Full documentation for ROCm Compute Profiler is available at [https://rocm.docs.
 
 * Profiling on MI200 collects two fewer counters, which saves one profiling pass.
 
+* Profiling with no filter collects fewer counters on some GPUs, so it can take fewer passes.
+
 ### Resolved issues
 
 * Fixed the gfx1250 roofline missing its L0 and L2 points.
