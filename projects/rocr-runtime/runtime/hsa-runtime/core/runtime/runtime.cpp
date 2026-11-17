@@ -5193,7 +5193,7 @@ const core::MemoryRegion* Runtime::ResolveImportedRegion(const core::DmaBufInfo&
     /* Device VMM allocations come from the coarse-grained local pool. */
     for (const auto& region : owner->regions()) {
       const auto* amd_region = static_cast<const AMD::MemoryRegion*>(region.get());
-      if (amd_region->IsLocalMemory() && !region->fine_grain()) return region.get();
+      if (amd_region->IsGeneralCoarseLocal()) return region.get();
     }
     return nullptr;
   }

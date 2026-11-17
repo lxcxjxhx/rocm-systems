@@ -610,6 +610,23 @@ void GpuAgent::InitRegionList() {
 
             regions_.push_back(std::make_shared<MemoryRegion>(true, false, false, false, user_visible, this,
                                                 mem_props[mem_idx]));
+
+            // Device kernarg memory. Allocations carry execute permission
+            // without the caller asking for it, so they stay eligible for the
+            // region's fragment allocator and small kernarg buffers no longer
+            // cost one buffer object each. Only host-visible VRAM is useful
+            // here since the CPU writes the arguments, and only on a discrete
+            // GPU: an APU's kernel arguments already live in system memory.
+            //
+            // This is a third coarse-grained view of the same memory, so it is
+            // published last and must be selected by testing
+            // HSA_REGION_GLOBAL_FLAG_KERNARG. A consumer that stops at the
+            // first coarse-grained region still gets the general purpose one.
+            // Inside ROCr, use MemoryRegion::IsGeneralCoarseLocal().
+            if (!is_apu_node && mem_props[mem_idx].HeapType == HSA_HEAPTYPE_FRAME_BUFFER_PUBLIC) {
+              regions_.push_back(std::make_shared<MemoryRegion>(false, true, false, false, true,
+                                                                this, mem_props[mem_idx]));
+            }
           }
           break;
         }
@@ -3875,8 +3892,7 @@ void GpuAgent::InitAllocators() {
     if (amd_region->IsLocalMemory() && amd_region->fine_grain()) {
       finegrain_allocator_ = region_allocator;
       finegrain_deallocator_ = region_deallocator;
-    } else if (amd_region->IsLocalMemory() &&
-               !(amd_region->fine_grain() || amd_region->extended_scope_fine_grain())) {
+    } else if (amd_region->IsGeneralCoarseLocal()) {
       coarsegrain_allocator_ = region_allocator;
       coarsegrain_deallocator_ = region_deallocator;
     }

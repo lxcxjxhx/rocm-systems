@@ -99,6 +99,13 @@ MemoryRegion::MemoryRegion(bool fine_grain, bool kernarg, bool full_profile,
         (mem_props_.HeapType == HSA_HEAPTYPE_FRAME_BUFFER_PRIVATE) ? 0 : 1;
     mem_flag_.ui32.NonPaged = 1;
 
+    // The CP fetches kernel arguments with execute permission, so every
+    // allocation from a device kernarg region needs it. Carrying the permission
+    // on the region rather than on the request keeps kernarg allocations on the
+    // fragment allocator's path, where they share 2 MiB backing allocations
+    // instead of taking one each.
+    if (kernarg) mem_flag_.ui32.ExecuteAccess = 1;
+
     virtual_size_ = kGpuVmSize;
 
   } else if (IsSystem()) {
