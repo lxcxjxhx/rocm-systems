@@ -333,8 +333,11 @@ class VirtualGPU : public device::VirtualDevice {
     //! Adds a raw signal for dependency tracking
     void AddDynamicQueueWait(hsa_signal_t signal) { dynamic_queue_waits_.push_back(signal); }
 
-    //! Keeps a submitted signal from being rearmed until a later wait has read it
-    void PinUntilWait(ProfilingSignal* signal) { NoteGpuWait(signal); }
+    //! Keeps a submitted signal from being rearmed until ReleaseHeldSignals
+    virtual void HoldSignal(ProfilingSignal* /*signal*/) {}
+
+    //! Drops the HoldSignal references once the waits on them have been captured
+    virtual void ReleaseHeldSignals() {}
 
     //! Most signals a caller may acquire before submitting the ops that use them
     virtual size_t MaxUnsubmittedSignals() const { return std::numeric_limits<size_t>::max(); }
@@ -433,6 +436,8 @@ class VirtualGPU : public device::VirtualDevice {
     bool WaitCurrent() override;
     void ResetCurrentSignal() override;
     size_t MaxUnsubmittedSignals() const override { return ROC_SIGNAL_POOL_SIZE; }
+    void HoldSignal(ProfilingSignal* signal) override;
+    void ReleaseHeldSignals() override;
 
    private:
     void PreparePooledSignals(const std::vector<ProfilingSignal*>& signals) override;
@@ -547,6 +552,7 @@ class VirtualGPU : public device::VirtualDevice {
     std::deque<ProfilingSignal*> parked_signals_;
     PinnedWaits open_pins_;                        //!< Pins from the last WaitingSignal call
     std::deque<PinnedWaits> closed_pins_;          //!< Pins waiting for their consumers
+    std::vector<ProfilingSignal*> held_signals_;   //!< References taken by HoldSignal
     ProfilingSignal* unflushed_store_ = nullptr;  //!< Last direct store not yet flushed
     hsa_signal_value_t unflushed_value_ = 0;      //!< Value of unflushed_store_
   };
