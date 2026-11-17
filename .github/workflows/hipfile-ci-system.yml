@@ -167,6 +167,7 @@ jobs:
         run: |
           chmod a+x \
             ${GITHUB_WORKSPACE}/hipfile-build-dir/test/hipfile_system_tests \
+            ${GITHUB_WORKSPACE}/hipfile-build-dir/test/amd_detail/async_mt \
             ${GITHUB_WORKSPACE}/hipfile-build-dir/test/amd_detail/batch_mt \
             ${GITHUB_WORKSPACE}/hipfile-build-dir/test/amd_detail/state_mt \
             ${GITHUB_WORKSPACE}/hipfile-build-dir/examples/aiscp/aiscp \
