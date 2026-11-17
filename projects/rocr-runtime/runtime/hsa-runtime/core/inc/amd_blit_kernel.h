@@ -45,6 +45,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <vector>
 #include <atomic>
@@ -302,6 +303,23 @@ class BlitKernel : public core::Blit {
 
   /// Lock to synchronize access to kernarg_ and completion_signal_
   std::mutex lock_;
+
+  /// Shared between this blit and every submission it has deferred.
+  ///
+  /// A deferred submission is owned by the runtime's async handler threads,
+  /// which Runtime::Unload only stops after Agent::ReleaseResources has already
+  /// destroyed the blits and their queues. A handler that fired in that window
+  /// would submit against a destroyed queue, so it has to be able to ask
+  /// whether the blit is still alive without touching the blit itself. Holding
+  /// this separately and by shared_ptr keeps that question answerable for as
+  /// long as any deferred submission survives.
+  struct DeferralGuard {
+    /// Held across both the flag write and the deferred submission, so the two
+    /// cannot interleave.
+    std::mutex lock;
+    bool blit_destroyed = false;
+  };
+  std::shared_ptr<DeferralGuard> deferral_guard_;
 
   /// Number of CUs on the underlying agent.
   int num_cus_;

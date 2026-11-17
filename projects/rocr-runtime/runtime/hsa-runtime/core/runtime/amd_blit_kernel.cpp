@@ -541,6 +541,7 @@ BlitKernel::BlitKernel(core::Queue* queue)
       bytes_queued_(0),
       last_queued_(0),
       pending_search_index_(0),
+      deferral_guard_(std::make_shared<DeferralGuard>()),
       num_cus_(0) {
   completion_signal_.handle = 0;
 }
@@ -604,6 +605,15 @@ hsa_status_t BlitKernel::Initialize(const core::Agent& agent) {
 }
 
 hsa_status_t BlitKernel::Destroy() {
+  // Close the door on deferred submissions before any resource goes away. A
+  // handler already inside its submission holds this lock, so it finishes
+  // against a queue that is still whole; one that arrives afterwards sees the
+  // flag and does nothing.
+  {
+    std::lock_guard<std::mutex> deferral(deferral_guard_->lock);
+    deferral_guard_->blit_destroyed = true;
+  }
+
   std::lock_guard<std::mutex> guard(lock_);
 
   const AMD::GpuAgent* gpuAgent = static_cast<const AMD::GpuAgent*>(agent_);
@@ -1103,10 +1113,13 @@ hsa_status_t BlitKernel::DeferUntilDepsResolved(const std::vector<core::Signal*>
 
   struct DeferredSubmit {
     std::function<void()> submit;
+    /// Keeps the answer to "is the blit still alive" reachable even after the
+    /// blit itself is gone, so the handler never dereferences a dead queue.
+    std::shared_ptr<DeferralGuard> guard;
     std::atomic<uint32_t> remaining;
   };
 
-  DeferredSubmit* op = new DeferredSubmit{std::move(submit), {}};
+  DeferredSubmit* op = new DeferredSubmit{std::move(submit), deferral_guard_, {}};
   op->remaining.store(uint32_t(pending_deps.size()), std::memory_order_release);
 
   // Each dependency calls this when it reaches zero; the last one in runs the
@@ -1114,7 +1127,14 @@ hsa_status_t BlitKernel::DeferUntilDepsResolved(const std::vector<core::Signal*>
   static hsa_amd_signal_handler handler = [](hsa_signal_value_t value, void* arg) {
     DeferredSubmit* op = reinterpret_cast<DeferredSubmit*>(arg);
     if (op->remaining.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-      op->submit();
+      {
+        // Destroy takes this same lock to set the flag, so the blit cannot be
+        // torn down in the middle of a submission, and a submission cannot
+        // start after teardown has begun. Dropping the work is the only option
+        // left at that point: the queue it would have used no longer exists.
+        std::lock_guard<std::mutex> deferral(op->guard->lock);
+        if (!op->guard->blit_destroyed) op->submit();
+      }
       delete op;
     }
     return false;
@@ -1123,6 +1143,15 @@ hsa_status_t BlitKernel::DeferUntilDepsResolved(const std::vector<core::Signal*>
   // SetAsyncSignalHandler currently always succeeds. If that ever changes,
   // failing part way would leave some handlers registered against op and the
   // rest never firing, so op could be neither run nor safely deleted here.
+  //
+  // op is freed by whichever handler observes the last dependency fall to zero.
+  // Dependencies that never resolve therefore strand it, which can only happen
+  // if the process tears the runtime down with a copy still gated on a signal
+  // nothing will ever satisfy. There is no unregister counterpart to
+  // SetAsyncSignalHandler to reclaim it from here, and freeing it while those
+  // registrations stand would be worse than leaking it, so it is left for
+  // process exit: bounded by the number of such copies, and unreachable while
+  // the caller honors the API contract.
   for (size_t i = 0; i < pending_deps.size(); ++i) {
     core::Runtime::runtime_singleton_->SetAsyncSignalHandler(
         core::Signal::Convert(pending_deps[i]), HSA_SIGNAL_CONDITION_EQ, 0, handler, op);
@@ -1181,8 +1210,14 @@ hsa_status_t BlitKernel::SubmitSwapCopyCommand(uint32_t num_entries, void* const
       if (dep->LoadRelaxed() != 0) pending_deps.push_back(dep);
     }
     if (!pending_deps.empty()) {
-      // Copied because the lists outlive this call once it defers. All three
-      // are validated above, so the resubmission cannot fail.
+      // Copied because the lists outlive this call once it defers.
+      //
+      // The resubmission cannot fail. The lists and sizes are validated above;
+      // total_dispatches is non-zero by the check above; and the resubmission
+      // carries no dependencies, so its reservation bound is
+      // MaxDispatchesPerReservation(0), which is the ring size exactly and so
+      // always satisfies ReservationFits. That matters because the lambda
+      // returns void - there is no caller left to hand a status to.
       std::vector<void*> a(addr_a_list, addr_a_list + num_entries);
       std::vector<void*> b(addr_b_list, addr_b_list + num_entries);
       std::vector<size_t> sizes(size_list, size_list + num_entries);
