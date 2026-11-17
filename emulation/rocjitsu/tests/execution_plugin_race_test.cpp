@@ -2663,6 +2663,33 @@ TEST_F(ExitedWaveRaceTest, WorkgroupRoundOrdersExitedWriteOnlyAfterWait) {
   wait_passed(0, round);
 }
 
+// The barrier hooks are not filtered by wave subscription. A wave the plugin
+// holds no state for, here one whose workgroup was never reported to it, is
+// skipped, and the round still orders the fixture's waves.
+class UntrackedWaveRaceTest : public TensorDmaRaceTest {
+protected:
+  UntrackedWaveRaceTest() { wf_slots = 3; }
+};
+
+TEST_F(UntrackedWaveRaceTest, BarrierHooksSkipWavesWithoutPluginState) {
+  Wavefront *stranger = fixture.cu()->dispatch_wf(/*wg_id=*/7, /*pc=*/0x100, /*sgprs=*/128,
+                                                  /*vgprs=*/256, /*wf_size=*/32);
+  ASSERT_NE(stranger, nullptr);
+  const BarrierRound round = workgroup_round(0);
+  EXPECT_FALSE(ds_write(0, 64));
+  wait_dscnt(0);
+  signal(0, round);
+  signal(1, round);
+  fixture.plugin_group_->onAmdgpuBarrierSignaled(*stranger, round);
+  std::array<Wavefront *, 3> members{waves[0], waves[1], stranger};
+  complete(round, members);
+  fixture.plugin_group_->onAmdgpuBarrierWaitPassed(*stranger, round);
+  wait_passed(0, round);
+  wait_passed(1, round);
+  EXPECT_FALSE(ds_read(1, 64));
+  EXPECT_EQ(detector().openBarrierRounds(), 0u);
+}
+
 /// Adds a second workgroup of two waves to TensorDmaRaceTest, for cluster
 /// rounds, whose members span workgroups and therefore race detectors.
 class ClusterRoundRaceTest : public TensorDmaRaceTest {

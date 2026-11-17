@@ -175,6 +175,11 @@ private:
   RaceWavefrontState *get_state(const amdgpu::Wavefront *wf) {
     return wf ? get_state(*wf) : nullptr;
   }
+  /// The wave's race state, or nullptr for a wave this plugin does not track.
+  /// For hooks that are not filtered by observes_hot_hooks_for_wavefront().
+  WaveRaceState *tracked_race_state(const amdgpu::Wavefront &wf) {
+    return wf.has_plugin_state(slot_index()) ? get_state(wf)->race_state : nullptr;
+  }
   void release_wave_state(amdgpu::Wavefront &wf) { wf.clear_plugin_state(slot_index()); }
 
   mutable std::mutex dispatch_mutex_;
