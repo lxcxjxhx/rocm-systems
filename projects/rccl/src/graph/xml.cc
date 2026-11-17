@@ -54,6 +54,17 @@ static ncclResult_t ncclTopoXmlAddXgmiPeerGpu(struct ncclXml* xml, struct ncclXm
   if (createdOut) *createdOut = created;
   return ncclSuccess;
 }
+
+#ifdef USE_AMDSMI
+// RCCL: record the platform's per-GPU UALoE bandwidth on a fabric xgmi entry. fabric_bw_gbps is in GB/s per
+// direction and is absent when the platform reports none. ncclTopoAddXGMI reads only this attribute, so a
+// topology file behaves like a live one.
+static ncclResult_t rcclTopoXmlSetFabricBandwidth(struct ncclXmlNode* xgmi, const amdsmiFabricDeviceInfo& dev) {
+  if (dev.bandwidth == 0) return ncclSuccess;
+  NCCLCHECK(xmlSetAttrFloat(xgmi, "fabric_bw_gbps", dev.bandwidth / kAmdSmiFabricMBpsPerGBps));
+  return ncclSuccess;
+}
+#endif
 #endif
 
 /*******************/
@@ -1086,10 +1097,11 @@ ncclResult_t ncclTopoGetXmlFromGpu(struct ncclXmlNode* pciNode, uint32_t hipDev,
           // Either path stamps accelerator tclass: HIP bus IDs need not exist on
           // the physical PCI bus, so sysfs class at that BDF is not the peer GPU.
           int created;
-          // count=1: amd-smi does not yet report UALoE link count.
-          // TODO: Update amd_smi_getLinkInfo to return the number of links for UALoE.
+          // count=1 stands for one local fabric peer. amd-smi has no UALoE link count, so the link bandwidth is
+          // fabric_bw_gbps, the platform value for the GPU as a whole.
           NCCLCHECK(ncclTopoXmlAddXgmiPeerGpu(xml, gpuNode, lowerId, 1, &nvlNode, &created));
           if (created) {
+            NCCLCHECK(rcclTopoXmlSetFabricBandwidth(nvlNode, fabInfo_dev));
             uint64_t uuidHigh = 0;
             uint64_t uuidLow = 0;
             memcpy(&uuidHigh, fabInfo.clusterUuid, sizeof(uuidHigh));
