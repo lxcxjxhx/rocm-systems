@@ -2147,10 +2147,10 @@ TEST(ExecutionPluginTest, UnsubscribedWaveBypassesHotHookAndCallbackLock) {
   EXPECT_EQ(test::ExecutionPluginGroupTestAccess::callback_lock_acquisitions(group), before + 1);
 }
 
-// Barrier signal and wait fire once per wave per round, on the thread running
-// the wave, so like its other execution hooks they take the callback lock only
-// when a plugin requires serial hot hooks. Round completion fires once per
-// round and always takes it.
+// Barrier signal and wait fire for one wave at a time, as often as its barrier
+// instructions execute, so like the per-instruction hooks they take the
+// callback lock only when a plugin requires serial hot hooks. Round completion
+// fires once per round and always takes it.
 TEST(ExecutionPluginTest, BarrierSignalAndWaitLockOnlyForSerialHotHooks) {
   PluginFixture fixture;
   ASSERT_NO_FATAL_FAILURE(fixture.initialize(/*num_wf_slots=*/1));

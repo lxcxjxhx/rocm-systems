@@ -60,7 +60,9 @@ struct BarrierRound {
   /// The named barrier ID (1-16) for a Named round, otherwise 0.
   uint32_t named_id = 0;
   /// Counts completed rounds of this barrier, and S_BARRIER_INIT, which
-  /// discards the signals counted so far. Starts at 0 for each workgroup.
+  /// discards the signals counted so far. Starts at 0 for each workgroup. A
+  /// single-wave workgroup has no barrier state, so on a target with a single
+  /// s_barrier instruction each of its rounds reports generation 0.
   uint64_t generation = 0;
 
   bool operator==(const BarrierRound &) const = default;
@@ -399,8 +401,10 @@ public:
   /// the completing signal precedes onAmdgpuBarrierRoundCompleted(). On
   /// targets with a single s_barrier instruction it fires for each member when
   /// the barrier resolves.
-  /// Fires once per wave per round. May run concurrently across simulation
-  /// partitions unless requires_serial_hot_hooks() returns true.
+  /// Fires once per counted signal, on the thread executing the wave. A named
+  /// barrier counts signals, not waves, so one wave can signal a round more
+  /// than once. May run concurrently across simulation partitions unless
+  /// requires_serial_hot_hooks() returns true.
   virtual void onAmdgpuBarrierSignaled(const amdgpu::Wavefront & /*wf*/,
                                        const BarrierRound & /*round*/) {}
 
@@ -417,8 +421,13 @@ public:
 
   /// Called when a wave passes s_barrier_wait. `round` is the round whose
   /// completion released it. Fires after onAmdgpuBarrierRoundCompleted() for
-  /// that round.
-  /// Fires once per wave per round. May run concurrently across simulation
+  /// that round. The round is the one that set the wave's completion bit; a
+  /// bit set by other means, such as a privileged STATE_PRIV write, reports
+  /// the round that last set it.
+  /// A wave that finds its bit set fires this on the thread executing it. A
+  /// wave parked in the wait fires it on the thread that completes the round;
+  /// for a cluster round that is the command processor's thread, while the
+  /// dispatch workers are stopped. May run concurrently across simulation
   /// partitions unless requires_serial_hot_hooks() returns true.
   virtual void onAmdgpuBarrierWaitPassed(const amdgpu::Wavefront & /*wf*/,
                                          const BarrierRound & /*round*/) {}

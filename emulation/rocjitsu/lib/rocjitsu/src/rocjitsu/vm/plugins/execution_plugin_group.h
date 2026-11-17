@@ -552,9 +552,10 @@ public:
     });
   }
 
-  // Signal and wait are per-wave hooks, delivered on the thread executing the
-  // wave like its other execution hooks, so they serialize only for plugins
-  // that require serial hot hooks.
+  // Signal and wait fire for one wave at a time, as often as its barrier
+  // instructions execute, so like the per-instruction hooks they serialize
+  // only for plugins that require serial hot hooks. Unlike those hooks they
+  // are not filtered by a plugin's per-wave subscription.
   void onAmdgpuBarrierSignaled(const amdgpu::Wavefront &wf, const BarrierRound &round) {
     dispatch_with_optional_plugin_lock([&]() {
       for (auto &entry : plugins_)
