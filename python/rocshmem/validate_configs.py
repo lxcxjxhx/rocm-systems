@@ -31,6 +31,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import venv
 from pathlib import Path
 
@@ -166,16 +167,47 @@ def _so_path(venv_py, env, cwd):
     return out.stdout.strip() if out.returncode == 0 else ""
 
 
-def _so_arches(so):
-    """GPU arches with actual code objects embedded in the extension. Uses
-    roc-obj-ls (ground truth: enumerates the bundled code objects); falls back
-    to scanning strings, which can over-report arches that only appear in a
-    baked-in default target list rather than as real code objects."""
-    objs = subprocess.run(["roc-obj-ls", so], capture_output=True, text=True)
+_CODE_OBJECT_ARCH_RE = r"amdgcn-amd-amdhsa--(gfx[0-9a-z]+)"
+
+
+def _so_arches(so, rocm_path):
+    """GPU arches with actual code objects embedded in the extension, or None
+    if no tool could enumerate them. Both tools list the bundled code objects;
+    scanning strings is not a substitute, since it also matches arches that
+    only appear in a baked-in default target list."""
+    try:
+        objs = subprocess.run(["roc-obj-ls", so], capture_output=True, text=True)
+        if objs.returncode == 0 and "gfx" in objs.stdout:
+            return sorted(set(re.findall(_CODE_OBJECT_ARCH_RE, objs.stdout)))
+    except OSError:
+        pass
+    # roc-obj-ls is deprecated in favour of llvm-objdump, which extracts each
+    # bundle next to its input, so point it at a scratch copy. TheRock / rocm-sdk
+    # roots ship it under lib/llvm/bin and have no roc-obj-ls.
+    candidates = [Path(rocm_path) / d / "llvm-objdump" for d in ("lib/llvm/bin", "llvm/bin")]
+    objdump = next((str(p) for p in candidates if p.is_file()), None) or shutil.which("llvm-objdump")
+    if objdump is None:
+        return None
+    with tempfile.TemporaryDirectory() as scratch:
+        copy = shutil.copy(so, scratch)
+        try:
+            objs = subprocess.run([objdump, "--offloading", copy], capture_output=True, text=True)
+        except OSError:
+            return None
     if objs.returncode == 0 and "gfx" in objs.stdout:
-        return sorted(set(re.findall(r"amdgcn-amd-amdhsa--(gfx[0-9a-z]+)", objs.stdout)))
-    raw = subprocess.run(["strings", "-a", so], capture_output=True, text=True).stdout
-    return sorted(set(re.findall(r"amdgcn-amd-amdhsa--(gfx[0-9a-z]+)", raw)))
+        return sorted(set(re.findall(_CODE_OBJECT_ARCH_RE, objs.stdout)))
+    return None
+
+
+def _expected_arches(prefix):
+    """Arches the extension should embed: ROCSHMEM_GPU_TARGETS if set, else the
+    ROCSHMEM_OFFLOAD_TARGETS the library recorded, mirroring CMakeLists.txt.
+    Device bitcode is optional in an install, so it is not the reference."""
+    if os.environ.get("ROCSHMEM_GPU_TARGETS"):
+        return sorted(set(re.split(r"[,;\s]+", os.environ["ROCSHMEM_GPU_TARGETS"])) - {""})
+    header = prefix / "include" / "rocshmem" / "rocshmem_config.h"
+    match = re.search(r'#\s*define\s+ROCSHMEM_OFFLOAD_TARGETS\s+"([^"]+)"', header.read_text())
+    return sorted(set(match.group(1).split())) if match else []
 
 
 def verify(name, venv_py, prefix, expects_numa, args):
@@ -205,15 +237,16 @@ def verify(name, venv_py, prefix, expects_numa, args):
         problems.append(f"bad version metadata '{ver}' (setuptools<61 / UNKNOWN dist?)")
     so = _so_path(venv_py, env, neutral)
     if so:
-        arches = _so_arches(so)
+        arches = _so_arches(so, args.rocm_path)
         raw = subprocess.run(["strings", "-a", so], capture_output=True, text=True).stdout
         githash = (re.findall(r"\b[0-9a-f]{40}\b", raw) or [""])[0]
-        info["arches"] = ",".join(arches)
+        info["arches"] = ",".join(arches) if arches is not None else "?"
         info["git"] = githash[:10]
-        bc = sorted({re.sub(r".*librocshmem_device_(.+)\.bc", r"\1", p.name)
-                     for p in (prefix / "lib").glob("librocshmem_device_*.bc")})
-        if arches != bc:
-            problems.append(f"arch mismatch: .so={arches} vs install={bc}")
+        expected = _expected_arches(prefix)
+        if arches is None:
+            problems.append("could not enumerate code objects (need roc-obj-ls or llvm-objdump)")
+        elif arches != expected:
+            problems.append(f"arch mismatch: .so={arches} vs expected={expected}")
         # libmpi is NEEDED for every config built with USE_EXTERNAL_MPI!=OFF
         # (the AUTO default), not just RO -- reported for information, not gated.
         needed = subprocess.run(["readelf", "-dW", so], capture_output=True, text=True).stdout
