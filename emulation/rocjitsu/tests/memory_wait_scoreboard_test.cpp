@@ -96,7 +96,11 @@ struct MemoryWaitScoreboardTest : ::testing::Test {
 
 class NamedRuntimeWaitInstruction : public Instruction {
 public:
-  explicit NamedRuntimeWaitInstruction(std::string_view name) : Instruction(name, nullptr) {}
+  explicit NamedRuntimeWaitInstruction(std::string_view name, bool valu = false)
+      : Instruction(name, nullptr) {
+    if (valu)
+      flags_ |= VALU;
+  }
 };
 
 TEST(RuntimeWaitTargetTest, OrdinaryEventsMatchTheDevelopClassifier) {
@@ -154,6 +158,60 @@ TEST(RuntimeWaitTargetTest, CacheAsyncAndExpertPoliciesKeepTheirRuntimePositions
   EXPECT_EQ(waitcheck_detail::RuntimeWaitTarget::wmma_valu_wait_states(
                 matrix, ROCJITSU_CODE_ARCH_CDNA5, ROCJITSU_CODE_TARGET_GFX1250),
             4u);
+}
+
+TEST(RuntimeWaitTargetTest, CheckerAndRuntimeSpecialWaitPoliciesAgree) {
+  using waitcheck_detail::RuntimeWaitTarget;
+  using waitcheck_detail::WaitcheckTarget;
+  static_assert(waitcheck_detail::kGfx10ScalarSource ==
+                waitcheck_detail::WaitEventKind::Gfx10ScalarSource);
+  static_assert(waitcheck_detail::kValuCore == waitcheck_detail::WaitEventKind::ValuCore);
+  static_assert(waitcheck_detail::kValuDp == waitcheck_detail::WaitEventKind::ValuDp);
+  static_assert(waitcheck_detail::kValuMatrix == waitcheck_detail::WaitEventKind::ValuMatrix);
+  static_assert(waitcheck_detail::kValuTrans == waitcheck_detail::WaitEventKind::ValuTrans);
+  for (const auto [arch, name] : {
+           std::pair{ROCJITSU_CODE_ARCH_CDNA2, "buffer_wbl2"},
+           std::pair{ROCJITSU_CODE_ARCH_CDNA3, "buffer_inv"},
+           std::pair{ROCJITSU_CODE_ARCH_CDNA4, "buffer_wbl2"},
+           std::pair{ROCJITSU_CODE_ARCH_CDNA5, "global_load_async_to_lds_b32"},
+           std::pair{ROCJITSU_CODE_ARCH_CDNA5, "global_store_async_from_lds_b32"},
+           std::pair{ROCJITSU_CODE_ARCH_CDNA5, "s_prefetch_inst"}}) {
+    SCOPED_TRACE(testing::Message() << "arch=" << arch << " mnemonic=" << name);
+    NamedRuntimeWaitInstruction inst(name);
+    const auto checker = WaitcheckTarget::classify_events(inst, arch);
+    const auto runtime = RuntimeWaitTarget::classify_events(inst, arch);
+    ASSERT_TRUE(checker.succeeded());
+    ASSERT_TRUE(runtime.succeeded());
+    ASSERT_EQ(checker.value().size(), runtime.value().size());
+    for (size_t i = 0; i < checker.value().size(); ++i) {
+      const auto &lhs = checker.value()[i];
+      const auto &rhs = runtime.value()[i];
+      EXPECT_EQ(lhs.counter, rhs.counter);
+      EXPECT_EQ(lhs.kind, rhs.kind);
+      EXPECT_EQ(lhs.registers, rhs.registers);
+      EXPECT_EQ(lhs.check_uses, rhs.check_uses);
+      EXPECT_EQ(lhs.check_defs, rhs.check_defs);
+      EXPECT_EQ(lhs.check_exec_defs, rhs.check_exec_defs);
+      EXPECT_EQ(lhs.check_memory_order, rhs.check_memory_order);
+      EXPECT_EQ(lhs.check_program_end, rhs.check_program_end);
+      EXPECT_EQ(WaitcheckTarget::completion_order_kind(lhs.counter, lhs.kind, arch),
+                RuntimeWaitTarget::completion_order_kind(rhs.counter, rhs.kind, arch));
+      EXPECT_EQ(WaitcheckTarget::issue_units(inst, lhs, arch),
+                RuntimeWaitTarget::issue_units(inst, rhs, arch));
+    }
+  }
+  NamedRuntimeWaitInstruction matrix("v_wmma_scale_f16_16x16x32_f16", true);
+  const auto checker_kind = WaitcheckTarget::expert_valu_kind(matrix, ROCJITSU_CODE_ARCH_CDNA5);
+  const auto runtime_kind = RuntimeWaitTarget::expert_valu_kind(matrix, ROCJITSU_CODE_ARCH_CDNA5);
+  ASSERT_TRUE(checker_kind);
+  EXPECT_EQ(checker_kind, runtime_kind);
+  EXPECT_EQ(WaitcheckTarget::wmma_valu_wait_states(
+                matrix, ROCJITSU_CODE_ARCH_CDNA5, ROCJITSU_CODE_TARGET_GFX1250),
+            RuntimeWaitTarget::wmma_valu_wait_states(
+                matrix, ROCJITSU_CODE_ARCH_CDNA5, ROCJITSU_CODE_TARGET_GFX1250));
+  const waitcheck_detail::ClassifiedEvent event{WaitCounterKind::VaVdst, *checker_kind};
+  EXPECT_EQ(WaitcheckTarget::issue_units(matrix, event, ROCJITSU_CODE_ARCH_CDNA5),
+            RuntimeWaitTarget::issue_units(matrix, event, ROCJITSU_CODE_ARCH_CDNA5));
 }
 
 TEST_F(MemoryWaitScoreboardTest, MatrixOperandDiagnosticIncludesCompletedCorePositions) {
