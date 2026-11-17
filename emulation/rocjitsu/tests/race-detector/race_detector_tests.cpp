@@ -3087,3 +3087,35 @@ TEST(RaceDetector, SplitBarrier_NewerNamedGenerationClosesAnUncompletedRound) {
   b.waitPassed(1, next);
   EXPECT_EQ(b.openBarrierRounds(), 1u);
 }
+
+// An LDS operand read after its wave's signal is recorded even when the wave
+// read the same DWORD before the signal and that read is still in the
+// history, because wave 2 has not waited yet. The earlier read is released by
+// the round; the later one is not.
+TEST(RaceDetector, SplitBarrier_OperandReadAfterSignalIsRecordedBesideAnEarlierRead) {
+  RaceTestBuilder b(/*numWaves=*/3, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  const BarrierRoundId round = RaceTestBuilder::workgroupRound(0);
+  b.ldsOperandRead(/*wave=*/1, /*lane=*/0, kX, /*bytes=*/4);
+  signalAndComplete(b, round, {0, 1, 2});
+  b.waitPassed(0, round);
+  EXPECT_EQ(b.ldsReadEventCount(), 1u);
+  b.ldsOperandRead(/*wave=*/1, /*lane=*/0, kX, /*bytes=*/4);
+  EXPECT_EQ(b.ldsReadEventCount(), 2u);
+  b.checkLdsWrite(/*wave=*/0, /*lane=*/0, kX, /*bytes=*/4);
+  expectOneLdsRace(b, /*wave=*/0, kX, /*isWrite=*/true);
+}
+
+// No other wave can race with the only live wave's operand reads, so they are
+// checked but not recorded.
+TEST(RaceDetector, SplitBarrier_OnlyLiveWaveDoesNotRecordOperandReads) {
+  RaceTestBuilder single(/*numWaves=*/1, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  single.ldsOperandRead(/*wave=*/0, /*lane=*/0, kX, /*bytes=*/4);
+  EXPECT_EQ(single.ldsReadEventCount(), 0u);
+  EXPECT_EQ(single.barrierPendingEventCount(0), 0u);
+
+  RaceTestBuilder b(/*numWaves=*/2, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  b.endWave(1);
+  b.ldsOperandRead(/*wave=*/0, /*lane=*/0, kX, /*bytes=*/4);
+  EXPECT_EQ(b.ldsReadEventCount(), 0u);
+  EXPECT_EQ(b.barrierPendingEventCount(0), 0u);
+}

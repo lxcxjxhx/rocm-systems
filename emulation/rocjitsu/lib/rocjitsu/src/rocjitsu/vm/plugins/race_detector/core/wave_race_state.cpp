@@ -381,6 +381,9 @@ void WaveRaceState::recordLdsOperandRead(InstructionSnapshot instruction, uint32
   // Each actual read can conflict with a newer write, even when these bytes
   // are already represented in the wave's completed read history.
   detector->validateRead(address, waveId, lane, bytes, MemoryOrderClass::UNORDERED);
+  // The read is recorded only so that other waves can race with it.
+  if (detector->isOnlyLiveWave(waveId))
+    return;
   auto &covered = directLdsReadWidths[address];
   if (bytes <= covered)
     return;

@@ -129,8 +129,10 @@ void RaceDetector::barrierSignaled(WaveId wave, BarrierRoundId round) {
       std::span(acquired_).subspan(static_cast<size_t>(wave.value) * waveCount(), waveCount());
   joinClock(state.clock, row);
   state.signalled |= uint64_t{1} << wave.value;
-  // Events the wave completes from now on wait for its next signal.
+  // Events the wave completes from now on wait for its next signal, and so do
+  // the LDS operands it reads from now on.
   ++acquired(wave, wave);
+  waveRaceStates[wave.value].forgetLdsOperandReads();
 }
 
 void RaceDetector::barrierRoundCompleted(BarrierRoundId round, std::span<const WaveId> members,

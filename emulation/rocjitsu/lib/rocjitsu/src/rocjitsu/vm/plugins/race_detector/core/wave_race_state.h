@@ -212,6 +212,11 @@ public:
   void recordLdsOperandRead(InstructionSnapshot instruction, uint32_t address, uint32_t bytes,
                             uint32_t lane);
 
+  /// Forget which LDS DWORDs this wave has read as operands, so that its next
+  /// read of each is recorded again. Called when the wave signals a barrier:
+  /// reads recorded before the signal are released by it, later ones are not.
+  void forgetLdsOperandReads() { directLdsReadWidths.clear(); }
+
   /// Retire the completed LDS events this wave completed in barrier epochs up
   /// to `epoch`. Events are kept in completion order, so these are a prefix.
   void retireReleasedThrough(uint32_t epoch);
