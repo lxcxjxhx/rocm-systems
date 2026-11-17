@@ -402,14 +402,16 @@ CDNA1 through CDNA4 and GFX11. CDNA uses a four-bit LGKMCNT and six-bit VMCNT;
 GFX11 uses six-bit fields for both. GFX11 vector stores use the separate VSCNT
 domain and therefore do not create VMCNT pressure. Generic FLAT applies the
 capacity constraints of the domains its addresses resolve to, once they are
-resolved. On CDNA4, a buffer or global instruction issued with wave EXEC zero
-counts on VMCNT and completes in order with the wave's other vector memory
-instructions. This was measured on MI355X (gfx950) for buffer and global loads
-to VGPRs, buffer and global stores, and buffer loads to LDS (#15938). Such an
-instruction applies VMCNT backpressure and keeps its slot, recorded as an event
-with no registers or LDS bytes, so a later `s_waitcnt vmcnt(N)` counts it. DS
-and FLAT instructions issued with wave EXEC zero were not measured on CDNA4 and
-keep no slot.
+resolved. On CDNA4, a buffer, global or scratch instruction issued with wave
+EXEC zero counts on VMCNT and completes in order with the wave's other vector
+memory instructions (CDNA4 ISA sections 3.3, 4.4 and 10.5). This was measured
+on MI355X (gfx950) for buffer and global loads to VGPRs, buffer and global
+stores, and buffer loads to LDS (#15938). Such an instruction applies VMCNT
+backpressure and keeps its slot, recorded as an event with no registers or LDS
+bytes, so a later `s_waitcnt vmcnt(N)` counts it; an EXEC-zero
+`scratch_load_dword`, for example, counts toward `vmcnt(1)`. DS and FLAT
+instructions issued with wave EXEC zero were not measured on CDNA4 and keep no
+slot.
 
 On gfx1250 it is modeled for each split counter: LOADcnt, STOREcnt, DScnt,
 ASYNCcnt and TENSORcnt are 6-bit counters and KMcnt is a 5-bit counter (the
