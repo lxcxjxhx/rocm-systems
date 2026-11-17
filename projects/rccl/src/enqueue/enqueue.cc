@@ -2501,6 +2501,7 @@ ncclResult_t rcclAddonLaunchBegin(struct ncclComm* comm, cudaStream_t stream, st
   state->capturing = false;
   state->deviceStreamAcquired = false;
   state->deviceStream = nullptr;
+  state->launchOrderAcquired = false;
   comm->addonStopEvent = nullptr;
 
   CUDACHECK(hipGetDevice(&state->savedDev));
@@ -2529,6 +2530,22 @@ ncclResult_t rcclAddonLaunchBegin(struct ncclComm* comm, cudaStream_t stream, st
     comm->addonStopEvent = comm->doneEvent;
   }
 
+  // Implicit launch order: the launchOrder half of ncclLaunchPrepare, which has to follow any change to it by
+  // hand. Without it an addon kernel would bypass the per-device order the other communicators rely on.
+  if (comm->config.launchOrderImplicit == 1) {
+    cudaStream_t launchOrder;
+    if (state->capturing && !ncclGraphStreamOrderingSerialize(comm)) {
+      launchOrder = state->graph.origin;
+    } else {
+      NCCLCHECK(ncclStrongStreamAcquire(state->graph, &comm->context->launchOrder, /*concurrent=*/state->capturing,
+                                        &launchOrder));
+      state->launchOrderAcquired = true;
+    }
+    if (launchOrder != stream) {
+      NCCLCHECK(ncclStreamWaitStream(stream, launchOrder, comm->sharedRes->scratchEvent));
+    }
+  }
+
   return ncclSuccess;
 }
 
@@ -2550,9 +2567,27 @@ ncclResult_t rcclAddonLaunchEnd(struct ncclComm* comm, cudaStream_t stream,
     if (state.capturing) {
       NCCLCHECKGOTO(rcclAddonCaptureOrderEnd(comm, stream, state), result, release);
     }
+    // The launchOrder half of ncclLaunchFinish. AMD has no launch-completion event, so order is Serial:
+    // the next launch on this device waits for this one to finish.
+    if (comm->config.launchOrderImplicit == 1) {
+      cudaStream_t launchOrder = state.graph.origin;
+      if (state.launchOrderAcquired) {
+        NCCLCHECKGOTO(ncclStrongStreamAcquiredWorkStream(state.graph, &comm->context->launchOrder,
+                                                         /*concurrent=*/state.capturing, &launchOrder),
+                      result, release);
+      }
+      if (launchOrder != stream) {
+        NCCLCHECKGOTO(ncclStreamWaitStream(launchOrder, stream, comm->sharedRes->scratchEvent), result, release);
+      }
+    }
   }
 
 release:
+  if (state.launchOrderAcquired) {
+    ncclResult_t releaseRes =
+        ncclStrongStreamRelease(state.graph, &comm->context->launchOrder, /*concurrent=*/state.capturing);
+    if (result == ncclSuccess) result = releaseRes;
+  }
   if (state.deviceStreamAcquired) {
     ncclResult_t releaseRes = ncclStrongStreamRelease(state.graph, &comm->sharedRes->deviceStream,
                                                       /*concurrent=*/false);

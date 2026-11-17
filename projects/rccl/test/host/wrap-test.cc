@@ -4356,20 +4356,19 @@ TEST(WrapMicrotest, DdaEnabled_DisabledByParamReturnsFalse) {
   DeleteCommWithArch(comm);
 }
 
-// Closes gap 1 of 3 flagged in the 3-way disable guard: only
-// rcclParamDdaEnable had a dedicated test proving it alone disables DDA.
-// This proves the second disjunct, comm->config.launchOrderImplicit == 1,
-// independently -- everything else here (arch/rank/size) is set up
-// identically to a case that would otherwise return true.
-TEST(WrapMicrotest, DdaEnabled_ImplicitLaunchOrderReturnsFalse) {
+// Implicit launch order used to disqualify DDA. rcclAddonLaunch now joins the
+// per-device launch order (see the AddonLaunch_ImplicitOrder_* cases in
+// enqueue-test.cc), so DDA stays eligible; everything else here (arch/rank/
+// size) is set up identically to a case that returns true.
+TEST(WrapMicrotest, DdaEnabled_ImplicitLaunchOrderDoesNotDisable) {
   ncclComm* comm = MakeCommWithArch("gfx942");
   comm->nRanks = 8;
   comm->config.launchOrderImplicit = 1;
-  EXPECT_FALSE(rcclDdaEnabled(comm, /*totalBytes=*/1024, /*threshold=*/2048));
+  EXPECT_TRUE(rcclDdaEnabled(comm, /*totalBytes=*/1024, /*threshold=*/2048));
   DeleteCommWithArch(comm);
 }
 
-// Closes gap 2 of 3: proves the third disjunct, ncclGroupDepth != 0,
+// Proves the second disjunct of the disable guard, ncclGroupDepth != 0,
 // independently. ncclGroupDepth is the real thread_local global from
 // group.cc (already linked, see wrap-test.cc's file header comment) -- no
 // seam needed, just set and restore it directly around the call.
