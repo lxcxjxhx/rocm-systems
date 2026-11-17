@@ -102,6 +102,7 @@ RaceDetector::BarrierRoundState &RaceDetector::roundState(BarrierRoundId round) 
   slot->open = true;
   slot->completed = false;
   slot->awaiting = 0;
+  slot->signalled = 0;
   slot->clock.assign(waveCount(), 0);
   ++openRounds_;
   return *slot;
@@ -117,6 +118,7 @@ void RaceDetector::barrierSignaled(WaveId wave, BarrierRoundId round) {
   const auto row =
       std::span(acquired_).subspan(static_cast<size_t>(wave.value) * waveCount(), waveCount());
   joinClock(state.clock, row);
+  state.signalled |= uint64_t{1} << wave.value;
   // Events the wave completes from now on wait for its next signal.
   ++acquired(wave, wave);
 }
@@ -124,8 +126,23 @@ void RaceDetector::barrierSignaled(WaveId wave, BarrierRoundId round) {
 void RaceDetector::barrierRoundCompleted(BarrierRoundId round, std::span<const WaveId> members,
                                          bool wholeWorkgroup) {
   BarrierRoundState &state = roundState(round);
-  if (wholeWorkgroup)
-    joinClock(state.clock, exitClock_);
+  if (wholeWorkgroup) {
+    // The round could not complete until each wave had signalled or ended, so
+    // it follows everything an ended wave completed, unless that wave had
+    // signalled the round: then the round could complete without its end, and
+    // orders only what the signal released.
+    if ((state.signalled & endedWaves_) == 0) {
+      joinClock(state.clock, exitClock_);
+    } else {
+      for (int wave = 0; wave < waveCount(); ++wave) {
+        const uint64_t bit = uint64_t{1} << wave;
+        if ((endedWaves_ & bit) == 0 || (state.signalled & bit) != 0)
+          continue;
+        joinClock(state.clock, std::span(acquired_).subspan(static_cast<size_t>(wave) * waveCount(),
+                                                            waveCount()));
+      }
+    }
+  }
   state.completed = true;
   state.awaiting = 0;
   for (WaveId member : members)
@@ -147,6 +164,7 @@ void RaceDetector::barrierWaitPassed(WaveId wave, BarrierRoundId round) {
 
 void RaceDetector::waveEnded(WaveId wave) {
   ended_[wave.value] = true;
+  endedWaves_ |= uint64_t{1} << wave.value;
   const auto row =
       std::span(acquired_).subspan(static_cast<size_t>(wave.value) * waveCount(), waveCount());
   joinClock(exitClock_, row);

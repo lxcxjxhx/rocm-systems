@@ -41,8 +41,10 @@ namespace rocjitsu::plugins::race_detector {
 ///     completes records its wave's current epoch (EventRegistry::releaseEpoch).
 ///   - A signal releases into the round everything the wave has completed or
 ///     acquired; passing the wait of a round acquires everything released into
-///     it. A wave that ends releases into every later workgroup round, which
-///     cannot complete without it (CDNA5 ISA 5.6).
+///     it. A wave that ends releases into every later workgroup round it had
+///     not signalled, which cannot complete until it ends (CDNA5 ISA 5.6). A
+///     round it had signalled can complete without its end, and orders only
+///     what that signal released.
 ///   - Another wave's completed event is ordered for a wave that has acquired
 ///     its epoch; it is retired once every live wave has.
 /// A single s_barrier is reported as a round whose signals and waits coincide.
@@ -170,6 +172,8 @@ private:
     bool completed = false;
     /// Bit per member that has not yet passed the round's wait.
     uint64_t awaiting = 0;
+    /// Bit per wave whose signal was counted toward the round.
+    uint64_t signalled = 0;
     /// Per wave, the highest epoch released into the round.
     std::vector<uint32_t> clock;
   };
@@ -271,6 +275,8 @@ private:
   int liveWaves_ = 0;
   /// The join of the clocks of the waves that ended.
   std::vector<uint32_t> exitClock_;
+  /// Bit per wave that ended.
+  uint64_t endedWaves_ = 0;
   std::vector<bool> ended_;
   std::vector<BarrierRoundState> rounds_;
   size_t openRounds_ = 0;

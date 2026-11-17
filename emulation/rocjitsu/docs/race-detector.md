@@ -308,12 +308,14 @@ earlier rounds; passing the wait acquires everything released into the round
 that set the wave's completion bit. Ordering is transitive, so waves can pass
 ordering through named barriers, and an LDS event is retired once every other
 live wave has acquired it. A wave that ends releases its completed events into
-every later workgroup round, because a workgroup barrier cannot complete until
-each wave has signalled or ended; named and cluster rounds, which can complete
-without it, do not. A named round orders events only for the waves that joined
-it. A cluster round orders events among the waves of each workgroup; ordering
-between workgroups is not modeled. The simulator reports each counted signal,
-each completed round and each passed wait to plugins.
+every later workgroup round it had not signalled, because such a round cannot
+complete until the wave ends; named and cluster rounds, which can complete
+without it, do not. A round the wave had signalled before ending can also
+complete without its end, so it orders only what that signal released. A named
+round orders events only for the waves that joined it. A cluster round orders
+events among the waves of each workgroup; ordering between workgroups is not
+modeled. The simulator reports each counted signal, each completed round and
+each passed wait to plugins.
 
 Targets with a single `s_barrier` instruction are handled the same way, with
 every member's signal and wait at the point where the barrier resolves.

@@ -564,8 +564,8 @@ void RaceDetectorPlugin::onAmdgpuWavefrontHalted(amdgpu::Wavefront &wf) {
         wait.add(*counter, 0);
     }
     state->race_state->dispatch(wait);
-    // A workgroup barrier cannot complete without this wave from now on, so
-    // the next workgroup round releases what it completed.
+    // A workgroup round this wave has not signalled could not complete until
+    // now, so the next such round releases what the wave completed.
     state->race_state->getDetector()->waveEnded(state->race_state->getWaveId());
   }
   release_wave_state(wf);

@@ -3025,3 +3025,26 @@ TEST(RaceDetector, SplitBarrier_WaveEndDefersRetirementToNextWait) {
   EXPECT_EQ(b.ldsWriteEventCount(), 0u);
   EXPECT_EQ(b.barrierPendingEventCount(0), 0u);
 }
+
+// A wave that signals a workgroup round and then ends: the round can complete
+// without its end, so it orders only what the signal released. The write the
+// wave's end completes afterwards is released by the next round, which it did
+// not signal and which therefore cannot complete until it has ended.
+TEST(RaceDetector, SplitBarrier_SignalThenEndReleasesOnlyWhatTheSignalDid) {
+  RaceTestBuilder b(/*numWaves=*/2, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  const BarrierRoundId round0 = RaceTestBuilder::workgroupRound(0);
+  const BarrierRoundId round1 = RaceTestBuilder::workgroupRound(1);
+  dsWrite(b, 0);
+  b.signal(0, round0);
+  b.endWave(0); // Completes the write, after the signal.
+  b.completeRound(round0, {1});
+  b.waitPassed(1, round0);
+  b.checkLdsRead(/*wave=*/1, /*lane=*/0, kX, /*bytes=*/4);
+  expectOneLdsRace(b, /*wave=*/1, kX, /*isWrite=*/false);
+
+  b.clearViolations();
+  signalAndComplete(b, round1, {1});
+  b.waitPassed(1, round1);
+  b.checkLdsRead(/*wave=*/1, /*lane=*/0, kX, /*bytes=*/4);
+  EXPECT_EQ(b.raceCount(), 0);
+}
