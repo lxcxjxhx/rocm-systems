@@ -20,6 +20,7 @@ arch without a roofline benchmark). The views leave out the panels in LEFT_OUT_P
 import json
 from typing import Any, Dict, List, Set, Tuple
 
+import common
 import pytest
 
 import config
@@ -32,13 +33,7 @@ from utils.analysis_views import (
     row_label,
     views_to_panel_configs,
 )
-from utils.mi_gpu_spec import mi_gpu_specs
-from utils.utils_common import (
-    ROOFLINE_PANEL_ID,
-    config_arch_members,
-    get_arch_panel_id_to_alias,
-    load_panel_configs,
-)
+from utils.utils_common import get_arch_panel_id_to_alias, load_panel_configs
 
 # Table settings that must match the panel's; rows are compared by name.
 TABLE_KEYS = ("title", "header", "source", "columnwise")
@@ -46,14 +41,6 @@ TABLE_KEYS = ("title", "header", "source", "columnwise")
 NON_EQUATION_COLUMNS = ("unit", "peak", "pct_of_peak")
 # Analysis config panels with no view: the SDK has no PC sampling on gfx908.
 LEFT_OUT_PANELS = {"gfx908": (2100,)}
-
-
-# Moves to tests/common.py in the analyze cutover, shared with the metric library sync.
-def _unshown_file_ids(arch: str) -> Set[str]:
-    """Return the ids of analysis config files hidden on arch."""
-    if config_arch_members(arch)[0] in mi_gpu_specs.get_roofline_archs():
-        return set()
-    return {f"{ROOFLINE_PANEL_ID:04d}"}
 
 
 def structure_errors(
@@ -67,7 +54,7 @@ def structure_errors(
         del expected[panel_id]
     panel_rows = _panel_rows(expected)
     actual = views_to_panel_configs(views, metrics, {})
-    for file_id in _unshown_file_ids(arch):
+    for file_id in common.unshown_file_ids(arch):
         expected.pop(int(file_id), None)
         actual.pop(int(file_id), None)
     if list(expected) != list(actual):

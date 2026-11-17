@@ -17,8 +17,9 @@ The check skips the roofline panel of an arch without a roofline benchmark (gfx9
 
 from collections import defaultdict
 from types import SimpleNamespace
-from typing import Any, Dict, List, NamedTuple, Optional, Set
+from typing import Any, Dict, List, NamedTuple, Optional
 
+import common
 import pytest
 from validate_metric_library import (
     EMPIRICAL_PEAK_RE,
@@ -34,7 +35,6 @@ from rocprof_compute_soc.soc_base import OmniSoC_Base, iter_analysis_config_metr
 from utils.mi_gpu_spec import mi_gpu_specs
 from utils.utils_common import (
     MEMBW_ANALYSIS_PANEL_ID,
-    ROOFLINE_PANEL_ID,
     config_arch_members,
     parse_sets_yaml,
 )
@@ -186,13 +186,6 @@ UNIT_VARIANTS["gfx1250"] = {
 }
 
 
-def unshown_file_ids(arch: str) -> Set[str]:
-    """Return the ids of analysis config files hidden on arch."""
-    if config_arch_members(arch)[0] in mi_gpu_specs.get_roofline_archs():
-        return set()
-    return {f"{ROOFLINE_PANEL_ID:04d}"}
-
-
 def row_forms(table: Dict[str, Any], row: Dict[str, Any]) -> List[str]:
     """Return the columns of row with an equation."""
     main_forms = [form for form in MAIN_FORMS if form in row]
@@ -210,7 +203,7 @@ def read_rows(arch: str) -> List[Row]:
     """
     rows = []
     for item in iter_analysis_config_metrics(
-        config.analysis_configs_dir / arch, unshown_file_ids(arch)
+        config.analysis_configs_dir / arch, common.unshown_file_ids(arch)
     ):
         legacy_id = f"{item.table_id // 100}.{item.table_id % 100}.{item.metric_idx}"
         rows.extend(
@@ -303,7 +296,7 @@ def make_soc(arch: str, membw_analysis: bool, filter_blocks: List[str]) -> OmniS
 
 def shown_blocks(arch: str) -> List[str]:
     """Return the -b blocks for the shown files of arch, or none when all are shown."""
-    unshown = unshown_file_ids(arch)
+    unshown = common.unshown_file_ids(arch)
     if not unshown:
         return []
     file_ids = {
