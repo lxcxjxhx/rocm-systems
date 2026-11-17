@@ -98,10 +98,8 @@ tables:
   - metric: txa.tdm_load_bw
   - metric: txa.tdm_store_bw
   - metric: txa.tdm_async_load_insts
-    label: TDM Load Requests
     round: 0
   - metric: txa.tdm_async_store_insts
-    label: TDM Store Requests
     round: 0
 - title: GL0-GL1 Interface
   header:

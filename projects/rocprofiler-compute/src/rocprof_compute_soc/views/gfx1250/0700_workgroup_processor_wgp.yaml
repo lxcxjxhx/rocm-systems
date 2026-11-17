@@ -238,7 +238,6 @@ tables:
   - metric: sl1d.hits_per_req
     label: Dcache Hit Rate
   - metric: sl1d.req_bw_norm
-    label: Dcache Request Bandwidth
 - title: SQC-GL1 Interface
   header:
     metric: Metric

@@ -1172,7 +1172,7 @@ vL1D cache access metrics:
     plain: The number of times the vL1D was issued a write-back invalidate command during the kernel's execution per normalization unit. This may be triggered by, for example, the buffer_wbinvl1 instruction.
     rst: The number of times the vL1D was issued a write-back invalidate command during the kernel's execution per :ref:`normalization unit <normalization-units>`. This may be triggered by, for instance, the ``buffer_wbinvl1`` instruction.
     unit: Requests per Normalization Unit
-  L1-L2 BW:
+  L1-L2 Bandwidth:
     plain: The number of bytes transferred across the vL1D-L2 interface as a result of VMEM instructions, divided by total duration. Each read request counts as 128 bytes and each write or atomic request as 64 bytes, so, for example, a request for a single value still counts as a full request.
     rst: The number of bytes transferred across the vL1D-L2 interface as a result of :ref:`VMEM <desc-vmem>` instructions, divided by total duration. The number of bytes is calculated as the number of cache lines requested multiplied by the cache line size. This value does not consider partial requests, so for instance, if only a single value is requested in a cache line, the data movement will still be counted as a full cache line.
     unit: GB/s

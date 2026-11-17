@@ -64,10 +64,10 @@ Memory chart - Scalar Data Cache:
   DCache Requests:
     rst: Scalar data cache requests after bank serialization, normalized by the chosen unit.
     unit: Requests per Normalization Unit
-  DCache Hit Rate:
+  sL1D Hit Rate:
     rst: Percentage of scalar data cache accesses that hit. High hit rates indicate efficient reuse of constant and uniform data. Low rates may suggest excessive unique constant data or poor temporal locality.
     unit: Percent
-  DCache Load Bandwidth:
+  sL1D Load Bandwidth:
     rst: The number of bytes loaded by scalar memory instructions, divided by total duration. The number of bytes is the number of dwords each instruction loads multiplied by four; bounds-check reductions are ignored.
     unit: GB/s
 Memory chart - GL0 Cache (Vector L0):
@@ -259,11 +259,11 @@ WGP WMMA Instruction FLOPs and IOPs Counting:
     rst: Cycles of work sent for WMMA.
     unit: Cycles
 WGP Instruction Cache:
-  Icache Hit Rate:
+  L1I Hit Rate:
     rst: Percentage of instruction cache accesses that hit. High hit rates are essential for sustained instruction throughput. Low rates may indicate large kernels or divergent branches causing instruction cache thrashing.
     unit: Percent
 WGP Scalar Data Cache:
-  Dcache Hit Rate:
+  sL1D Hit Rate:
     rst: Percentage of scalar data cache accesses that hit. High hit rates indicate efficient reuse of constant and uniform data. Low rates may suggest excessive unique constant data or poor temporal locality.
     unit: Percent
 GL0 Request Statistics:

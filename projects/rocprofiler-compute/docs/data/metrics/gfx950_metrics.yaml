@@ -1000,7 +1000,7 @@ vL1D cache access metrics:
   Invalidations:
     rst: The number of times the vL1D was issued a write-back invalidate command during the kernel's execution per :ref:`normalization unit <normalization-units>`. This may be triggered by, for instance, the ``buffer_wbinvl1`` instruction.
     unit: Requests per Normalization Unit
-  L1-L2 BW:
+  L1-L2 Bandwidth:
     rst: The number of bytes transferred across the vL1D-L2 interface as a result of :ref:`VMEM <desc-vmem>` instructions, divided by total duration. The number of bytes is calculated as the number of cache lines requested multiplied by the cache line size. This value does not consider partial requests, so for instance, if only a single value is requested in a cache line, the data movement will still be counted as a full cache line.
     unit: GB/s
   Tag RAM 0 Req:
@@ -1024,20 +1024,20 @@ vL1D cache access metrics:
   L1-L2 Atomic:
     rst: The number of atomic requests that are sent through the vL1D to the :doc:`L2 cache <l2-cache>`, per :ref:`normalization unit <normalization-units>`. This includes requests for atomics with, and without return.
     unit: Requests per Normalization Unit
-  L1 Access Latency:
+  vL1D Access Latency Cycles:
     rst: The total number of cycles vL1D cache line requests spent in the vL1D cache pipeline.
     unit: Cycles per Normalization Unit
-  L1-L2 Read Latency:
+  vL1D-L2 Read Latency Cycles:
     rst: Calculated as the average number of cycles that the vL1D cache took to issue and receive read requests from the :doc:`L2 Cache <l2-cache>`. This number also includes requests for atomics with return values.
     unit: Cycles per Normalization Unit
-  L1-L2 Write Latency:
+  vL1D-L2 Write Latency Cycles:
     rst: Calculated as the average number of cycles that the vL1D cache took to issue and receive acknowledgement of a write request to the :doc:`L2 Cache <l2-cache>`. This number also includes requests for atomics without return values.
     unit: Cycles per Normalization Unit
 L1 Unified Translation Cache (UTCL1):
   Req:
     rst: The number of translation requests made to the UTCL1 per normalization unit.
     unit: Requests per Normalization Unit
-  Inflight Req:
+  UTCL1 Inflight Requests:
     rst: The sum of inflight client-to-UTCL1 translation requests per cycle, per normalization unit. Measures the average number of translation requests actively being processed by the UTCL1 at any given time.
     unit: Requests per Normalization Unit
   Hit Ratio:
@@ -1049,7 +1049,7 @@ L1 Unified Translation Cache (UTCL1):
   Translation Misses:
     rst: The total number of translation requests that missed in the UTCL1 due to translation not being present in the cache, per normalization unit.
     unit: Requests per Normalization Unit
-  Misses under Translation Miss:
+  UTCL1 Misses under Translation Miss:
     rst: The number of translation requests that missed in the UTCL1 while another miss for the same translation was already being processed, per normalization unit. These are secondary misses that occur before the first miss completes.
     unit: Requests per Normalization Unit
   Permission Misses:

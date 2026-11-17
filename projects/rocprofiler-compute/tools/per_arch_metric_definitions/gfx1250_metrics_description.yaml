@@ -347,11 +347,11 @@ Memory chart - LDS (Local Data Share):
     plain: The number of bytes stored by the TDM, divided by total duration.
     rst: The number of bytes stored by the TDM, divided by total duration.
     unit: GB/s
-  TDM Load Requests:
+  TDM Async Load Requests:
     plain: Number of TDM async load requests processed by TXA.
     rst: Number of TDM async load requests processed by TXA.
     unit: Count per Normalization Unit
-  TDM Store Requests:
+  TDM Async Store Requests:
     plain: Number of TDM async store requests processed by TXA.
     rst: Number of TDM async store requests processed by TXA.
     unit: Count per Normalization Unit
@@ -1144,7 +1144,7 @@ WGP Scalar Data Cache:
     plain: Percentage of Scalar Data Cache requests that hit in the cache.
     rst: Percentage of Scalar Data Cache requests that hit in the cache.
     unit: Percent
-  Dcache Request Bandwidth:
+  sL1D Load Bytes:
     plain: The number of bytes loaded through the Scalar Data Cache by scalar memory loads.
     rst: The number of bytes loaded through the Scalar Data Cache by scalar memory loads.
     unit: Bytes per Normalization Unit

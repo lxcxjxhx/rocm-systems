@@ -20,9 +20,7 @@ tables:
   - metric: sl1d.req
     label: DCache Requests
   - metric: sl1d.hits_per_req
-    label: DCache Hit Rate
   - metric: sl1d.req_bw
-    label: DCache Load Bandwidth
 - title: GL0 Cache (Vector L0)
   header:
     metric: Metric

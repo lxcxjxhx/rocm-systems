@@ -57,7 +57,7 @@ tables:
   - metric: vl1d.invalidations
     label: Invalidations
   - metric: vl1d.l2_bw_by_size
-    label: L1-L2 BW
+    label: L1-L2 Bandwidth
   - metric: vl1d.l2_rd_req
     label: L1-L2 Read
   - metric: vl1d.l2_wr_req

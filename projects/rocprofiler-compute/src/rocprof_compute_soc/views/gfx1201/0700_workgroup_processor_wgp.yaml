@@ -117,7 +117,6 @@ tables:
     unit: Unit
   metrics:
   - metric: l1i.hits_per_req
-    label: Icache Hit Rate
 - title: Scalar Data Cache
   header:
     metric: Metric
@@ -127,4 +126,3 @@ tables:
     unit: Unit
   metrics:
   - metric: sl1d.hits_per_req
-    label: Dcache Hit Rate
