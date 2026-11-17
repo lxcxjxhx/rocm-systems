@@ -14,9 +14,9 @@ set(ROCPROFSYS_PROFILER_HUB_GIT_REPOSITORY
 )
 
 set(ROCPROFSYS_PROFILER_HUB_GIT_TAG
-    "37d64c8ace8a3637c6ff4a1df60bc9bdb419eb1a"
+    "profiler-hub/support-for-schema-versions"
     CACHE STRING
-    "Git commit for profiler-hub fallback sparse checkout (pinned to merged #9968: C++20; includes #10459 NIC agent and RocPD schema 3.0.1)"
+    "Git ref for profiler-hub fallback sparse checkout (profiler-hub/support-for-schema-versions, #14545: embedded RocPD schemas)"
 )
 
 set(ROCPROFSYS_PROFILER_HUB_GIT_SUBDIR
@@ -194,6 +194,7 @@ else()
 endif()
 
 if(NOT _PROFILER_HUB_IS_EXTERNAL)
+    set(PROFILER_HUB_FETCH_DEPENDENCIES ON CACHE BOOL "" FORCE)
     set(PROFILER_HUB_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(PROFILER_HUB_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
     set(PROFILER_HUB_ENABLE_LOGGING
