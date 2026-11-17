@@ -164,6 +164,22 @@ void RaceDetector::barrierRoundCompleted(BarrierRoundId round, std::span<const W
   for (WaveId member : members)
     if (!ended_[member.value])
       state.awaiting |= uint64_t{1} << member.value;
+  // The round set these waves' completion bit, so the bit was clear: a wave it
+  // arms no longer waits for an older round of this barrier's bit. It passed
+  // that wait, or S_BARRIER_JOIN, S_BARRIER_LEAVE or S_BARRIER_INIT cleared
+  // the bit without one, which is not reported. Its next wait passes for this
+  // round, so the older round's clock is not acquired. Waves this round did
+  // not arm keep their older waits.
+  if (state.awaiting != 0) {
+    for (BarrierRoundState &older : rounds_) {
+      if (&older == &state || !older.open || !older.completed ||
+          older.id.barrier != round.barrier || (older.awaiting & state.awaiting) == 0)
+        continue;
+      older.awaiting &= ~state.awaiting;
+      if (older.awaiting == 0)
+        closeRound(older);
+    }
+  }
   if (state.awaiting == 0)
     closeRound(state);
 }

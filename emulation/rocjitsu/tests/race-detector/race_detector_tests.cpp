@@ -2704,7 +2704,10 @@ TEST(RaceDetector, SplitBarrier_WaitPassedForOlderRoundAcquiresOnlyIt) {
   b.waitPassed(0, round0);
   dsWrite(b, 0, kY);
   b.waitDscnt(0, 0);
-  signalAndComplete(b, round1, {0, 1});
+  b.signal(0, round1);
+  b.signal(1, round1);
+  // Wave 1's bit is still set by round 0, so round 1 arms only wave 0.
+  b.completeRound(round1, {0});
   b.waitPassed(1, round0);
   b.checkLdsRead(/*wave=*/1, /*lane=*/0, kX, /*bytes=*/4);
   EXPECT_EQ(b.raceCount(), 0);
@@ -3147,5 +3150,49 @@ TEST(RaceDetector, SplitBarrier_RoundThatArmsNoWaveCloses) {
   b.signal(1, round);
   EXPECT_EQ(b.openBarrierRounds(), 1u);
   b.completeRound(round, {});
+  EXPECT_EQ(b.openBarrierRounds(), 0u);
+}
+
+// S_BARRIER_JOIN clears the joining wave's completion bit without a report
+// (CDNA5 ISA 5.6.3, Table 22), so a wave that rejoins a named barrier never
+// waits for the round that had set it. When a later round arms the wave again,
+// the detector drops that abandoned wait, so repeating the sequence keeps one
+// round open, however many workgroup barriers pass in between.
+TEST(RaceDetector, SplitBarrier_RejoiningANamedBarrierDoesNotRetainItsRounds) {
+  constexpr uint64_t kIterations = 16;
+  RaceTestBuilder b(/*numWaves=*/2, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  for (uint64_t generation = 0; generation < kIterations; ++generation) {
+    const BarrierRoundId round = RaceTestBuilder::namedRound(1, generation);
+    signalAndComplete(b, round, {0, 1});
+    b.waitPassed(1, round);
+    // Wave 0 rejoins the barrier here, clearing its bit, and does not wait.
+    b.barrier();
+    // Only this round is open, still awaited by wave 0.
+    EXPECT_EQ(b.openBarrierRounds(), 1u);
+  }
+}
+
+// Arming a wave again drops only that wave's abandoned wait. Wave 2's bit is
+// still set by the first round, so the second round does not arm it; it still
+// waits for the first round and acquires what that round released.
+TEST(RaceDetector, SplitBarrier_RearmedWaveKeepsItsPeersWaitsForTheOlderRound) {
+  RaceTestBuilder b(/*numWaves=*/3, /*vgprs=*/8, /*sgprs=*/8, kWave32);
+  const BarrierRoundId round0 = RaceTestBuilder::namedRound(1, 0);
+  const BarrierRoundId round1 = RaceTestBuilder::namedRound(1, 1);
+  dsWrite(b, 0);
+  b.waitDscnt(0, 0);
+  signalAndComplete(b, round0, {0, 1, 2});
+  b.waitPassed(1, round0);
+  // Wave 0 rejoins the barrier, clearing its bit; round 1 arms waves 0 and 1.
+  b.signal(0, round1);
+  b.signal(1, round1);
+  b.completeRound(round1, {0, 1});
+  EXPECT_EQ(b.openBarrierRounds(), 2u);
+  b.waitPassed(2, round0);
+  EXPECT_EQ(b.openBarrierRounds(), 1u);
+  b.checkLdsRead(/*wave=*/2, /*lane=*/0, kX, /*bytes=*/4);
+  EXPECT_EQ(b.raceCount(), 0);
+  b.waitPassed(0, round1);
+  b.waitPassed(1, round1);
   EXPECT_EQ(b.openBarrierRounds(), 0u);
 }
