@@ -95,7 +95,6 @@ def _register_handlers() -> None:
         gen_vector_qsad,
         gen_vector_trig_preop,
         gen_vector_mad_64_32,
-        gen_vector_mad_32_16,
         gen_vector_div_fixup,
         gen_vector_div_scale,
         gen_vector_div_fmas,
@@ -237,9 +236,6 @@ def _register_handlers() -> None:
         c.result_writer,
         c.is_vop3 and c.inst.name in c.profile.integer_clamp_dtypes,
     )
-    DISPATCH['vector_mad_32_16'] = lambda c: gen_vector_mad_32_16(
-        c.dst_ops, c.src_ops, c.dtype, c.is_vop3
-    )
     DISPATCH['vector_div_fixup'] = lambda c: gen_vector_div_fixup(
         c.dst_ops, c.src_ops, c.dtype, c.is_vop3, c.has_abs
     )
@@ -323,7 +319,6 @@ def _register_handlers() -> None:
         c.op,
         c.dtype,
         opsel_exprs=c.opsel_exprs,
-        multiply_clamp=c.profile.packed_mul_lo_u16_clamp,
     )
     DISPATCH['pk_ternary'] = lambda c: gen_pk_ternary(
         c.dst_ops,
@@ -332,7 +327,6 @@ def _register_handlers() -> None:
         c.dtype,
         op_sel_hi_2_expr=c.op_sel_hi_2_expr,
         opsel_exprs=c.opsel_exprs,
-        integer_clamp=c.inst.name in c.profile.integer_clamp_dtypes,
     )
     DISPATCH['pk_fmac_vop2'] = lambda c: (
         gen_pk_fmac_vop3(c.dst_ops, c.src_ops)

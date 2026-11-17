@@ -313,7 +313,8 @@ def test_integer16_bindings_own_arithmetic_but_not_dpp_routing(arch):
             for index, selector in enumerate('ABC'):
                 assert (f'RJ_ARITH_ALU_HIGH_{selector}' in body) == (index < count)
             assert 'RJ_ARITH_DPP' not in body
-            assert gen_integer16(context('cdna2', name, ['d'], sources, True)) is None
+            older = gen_integer16(context('cdna2', name, ['d'], sources, True))
+            assert (older is None) == (name == 'V_MOV_B16')
             assert (
                 gen_integer16(context(arch, name, ['d'], sources + ['extra'], True))
                 is None
@@ -369,7 +370,8 @@ def test_widening_integer_keeps_full_word_accumulator_and_destination(arch):
         body = gen_widening_integer(context('cdna4', name, ['d'], sources, True))
         assert body is not None
         assert (
-            gen_widening_integer(context('cdna2', name, ['d'], sources, True)) is None
+            gen_widening_integer(context('cdna2', name, ['d'], sources, True))
+            is not None
         )
         assert gen_widening_integer(context(arch, name, ['d'], sources, False)) is None
 
@@ -830,3 +832,23 @@ def test_gfx942_half_multiply_forwards_sdwa_clamp():
     )
     assert 'inst_.src0 == amdgpu::SRC_SDWA && sdwa_clamp_' in body
     assert 'rj_arith_v_mul_lo_u16_w64_gfx942' in body
+
+
+@pytest.mark.parametrize(
+    'name',
+    [
+        'V_MIN3_I16',
+        'V_MIN3_U16',
+        'V_MAX3_I16',
+        'V_MAX3_U16',
+        'V_MED3_I16',
+        'V_MED3_U16',
+    ],
+)
+def test_gfx1030_native_half_selection_keeps_opsel(name):
+    from amdisa.codegen.execute.rj_arith_vector import gen_integer16
+
+    body = gen_integer16(context('rdna2', name, ['d'], ['a', 'b', 'c'], is_vop3=True))
+    assert 'RJ_ARITH_ALU_HIGH_D' in body
+    assert all(f'RJ_ARITH_ALU_HIGH_{letter}' in body for letter in 'ABC')
+    assert 'execute_integer16<3>' in body
