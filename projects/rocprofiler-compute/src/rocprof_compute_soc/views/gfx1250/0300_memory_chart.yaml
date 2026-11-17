@@ -72,19 +72,14 @@ tables:
     unit: Unit
   metrics:
   - metric: txa.lds_load_insts
-    label: LDS Load Requests
     round: 0
   - metric: txa.lds_store_insts
-    label: LDS Store Requests
     round: 0
   - metric: txa.lds_atomics_insts
-    label: LDS Atomic Requests
     round: 0
   - metric: txa.async_load_inst
-    label: Async Load Requests
     round: 0
   - metric: txa.async_store_inst
-    label: Async Store Requests
     round: 0
   - metric: lds.util
     round: 0
