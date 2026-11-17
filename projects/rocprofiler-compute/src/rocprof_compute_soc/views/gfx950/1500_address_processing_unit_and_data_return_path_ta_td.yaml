@@ -43,15 +43,15 @@ tables:
   - metric: ta.global_atomic_insts
     label: Global/Generic Atomic Instructions
   - metric: ta.buffer_insts
-    label: Spill/Stack Instructions
+    label: Buffer Instructions
   - metric: ta.buffer_rd_insts
-    label: Spill/Stack Read Instructions
+    label: Buffer Read Instructions
   - metric: ta.buffer_rd_insts_for_lds
-    label: Spill/Stack Read Instructions for LDS
+    label: Buffer Read Instructions for LDS
   - metric: ta.buffer_wr_insts
-    label: Spill/Stack Write Instructions
+    label: Buffer Write Instructions
   - metric: ta.buffer_atomic_insts
-    label: Spill/Stack Atomic Instructions
+    label: Buffer Atomic Instructions
 - title: Spill and stack metrics
   header:
     metric: Metric
@@ -61,11 +61,11 @@ tables:
     unit: Unit
   metrics:
   - metric: ta.buffer_total_cycles
-    label: Spill/Stack Total Cycles
+    label: Buffer Total Cycles
   - metric: ta.buffer_coalesced_rd
-    label: Spill/Stack Coalesced Read
+    label: Buffer Coalesced Read
   - metric: ta.buffer_coalesced_wr
-    label: Spill/Stack Coalesced Write
+    label: Buffer Coalesced Write
 - title: Vector L1 data-return path or Texture Data (TD)
   header:
     metric: Metric

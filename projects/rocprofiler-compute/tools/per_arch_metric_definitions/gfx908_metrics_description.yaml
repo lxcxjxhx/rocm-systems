@@ -795,32 +795,32 @@ Instruction counts:
     plain: The total number of global & generic memory atomic (with and without return) instructions executed on all compute units on the accelerator, counted once per wavefront, per normalization unit.
     rst: The total number of global & generic memory atomic (with and without return) instructions executed on all :doc:`compute units <compute-unit>` on the accelerator, per :ref:`normalization unit <normalization-units>`.
     unit: Instructions per Normalization Unit
-  Spill/Stack Instructions:
+  Buffer Instructions:
     plain: The total number of buffer memory instructions executed on all compute units on the accelerator, per normalization unit.
     rst: The total number of spill/stack memory instructions executed on all :doc:`compute units <compute-unit>` on the accelerator, per :ref:`normalization unit <normalization-units>`.
     unit: Instructions per Normalization Unit
-  Spill/Stack Read Instructions:
+  Buffer Read Instructions:
     plain: The total number of buffer read instructions processed by the address processing unit, counted once per wavefront, per normalization unit.
     rst: The total number of spill/stack memory read instructions executed on all :doc:`compute units <compute-unit>` on the accelerator, per :ref:`normalization unit <normalization-units>`.
     unit: Instructions per Normalization Unit
-  Spill/Stack Write Instructions:
+  Buffer Write Instructions:
     plain: The total number of buffer write instructions processed by the address processing unit, counted once per wavefront, per normalization unit.
     rst: The total number of spill/stack memory write instructions executed on all :doc:`compute units <compute-unit>` on the accelerator, per :ref:`normalization unit <normalization-units>`.
     unit: Instructions per Normalization Unit
-  Spill/Stack Atomic Instructions:
+  Buffer Atomic Instructions:
     plain: The total number of buffer atomic instructions processed by the address processing unit, counted once per wavefront, per normalization unit.
     rst: The total number of spill/stack memory atomic (with and without return) instructions executed on all :doc:`compute units <compute-unit>` on the accelerator, per :ref:`normalization unit <normalization-units>`. Typically unused as these memory operations are typically used to implement thread-local storage.
     unit: Instructions per Normalization Unit
 Spill / stack metrics:
-  Spill/Stack Total Cycles:
+  Buffer Total Cycles:
     plain: The number of cycles the address processing unit spent working on buffer instructions, per normalization unit.
     rst: The number of cycles the address processing unit spent working on spill/stack instructions, per :ref:`normalization unit <normalization-units>`.
     unit: Cycles per Normalization Unit
-  Spill/Stack Coalesced Read:
+  Buffer Coalesced Read:
     plain: The number of cycles the address processing unit spent working on coalesced buffer read instructions, per normalization unit.
     rst: The number of cycles the address processing unit spent working on coalesced spill/stack read instructions, per :ref:`normalization unit <normalization-units>`.
     unit: Cycles per Normalization Unit
-  Spill/Stack Coalesced Write:
+  Buffer Coalesced Write:
     plain: The number of cycles the address processing unit spent working on coalesced buffer write instructions, per normalization unit.
     rst: The number of cycles the address processing unit spent working on coalesced spill/stack write instructions, per :ref:`normalization unit <normalization-units>`.
     unit: Cycles per Normalization Unit
